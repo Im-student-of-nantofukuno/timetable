@@ -1,1 +1,490 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>時間割連絡システム</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="base_timetable.js" defer></script>
+    <script src="timetable_changes.js" defer></script>
+    <script src="notification.js" defer></script>
+    <script src="managers.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell" data-view="student">
+      <header class="top-bar" aria-label="画面上部">
+          <section class="profile-controls" id="student-profile-controls" aria-label="表示対象">
+          <label class="profile-chip profile-chip--grade">
+            <span>年:</span>
+            <select id="student-grade" name="grade">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </label>
 
+          <label class="profile-chip profile-chip--class">
+            <span>組:</span>
+            <select id="student-class" name="class">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+          </label>
+
+          <label class="profile-chip profile-chip--course">
+            <span>文理:</span>
+            <select id="student-course" name="course">
+              <option value="none">なし</option>
+              <option value="humanities" selected>文系</option>
+              <option value="science">理系</option>
+              <option value="explore-humanities">探文</option>
+              <option value="explore-science">探理</option>
+              <option value="agriculture">農</option>
+              <option value="welfare">福</option>
+            </select>
+          </label>
+        </section>
+
+        <nav class="view-actions" aria-label="画面切り替え">
+          <button class="icon-button" type="button" data-view-button="student" aria-label="生徒画面">
+            <span aria-hidden="true">👁</span>
+          </button>
+          <button class="icon-button" type="button" data-view-button="login" aria-label="管理者ログイン">
+            <span aria-hidden="true">✎</span>
+          </button>
+          <button class="icon-button" type="button" data-view-button="quick-admin" aria-label="浅い管理画面">
+            <span aria-hidden="true">🛠</span>
+          </button>
+          <button class="icon-button" type="button" data-view-button="deep-admin" aria-label="詳細管理画面">
+            <span aria-hidden="true">⚙</span>
+          </button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="screen screen--student" id="student-screen" data-screen="student" aria-labelledby="student-heading">
+          <h1 class="visually-hidden" id="student-heading">生徒用時間割画面</h1>
+
+          <section class="timetable-panel" aria-labelledby="student-timetable-heading">
+            <div class="panel-title">
+              <span aria-hidden="true">📋</span>
+              <h2 id="student-timetable-heading">時間割</h2>
+            </div>
+
+            <ol class="period-list">
+              <li><span class="period-number">1</span><span class="period-subject" data-period="1"></span></li>
+              <li><span class="period-number">2</span><span class="period-subject" data-period="2"></span></li>
+              <li><span class="period-number">3</span><span class="period-subject" data-period="3"></span></li>
+              <li><span class="period-number">4</span><span class="period-subject" data-period="4"></span></li>
+              <li><span class="period-number">5</span><span class="period-subject" data-period="5"></span></li>
+              <li><span class="period-number">6</span><span class="period-subject" data-period="6"></span></li>
+              <li><span class="period-number">7</span><span class="period-subject" data-period="7"></span></li>
+            </ol>
+          </section>
+
+          <section class="notice-panel" aria-labelledby="student-notice-heading">
+            <div class="panel-title">
+              <span aria-hidden="true">🔔</span>
+              <h2 id="student-notice-heading">お知らせ</h2>
+            </div>
+
+            <div class="notice-grid" id="student-notices">
+              <article class="notice-card" data-target-grade="2" data-target-class="4" data-target-course="humanities">
+                <h3>SS科より連絡｜06/27〜06/28</h3>
+                <p>MM月DD日の古典に、国語辞典を持ってきてください。電子辞書でも構いません。</p>
+              </article>
+
+              <article class="notice-card" data-target-grade="all" data-target-class="all" data-target-course="all">
+                <h3>SS科より連絡｜06/20〜06/29</h3>
+                <p>6/29にワークを回収します。</p>
+              </article>
+
+              <article class="notice-card" data-target-grade="all" data-target-class="all" data-target-course="all">
+                <h3>AA委員会より連絡｜06/25〜07/01</h3>
+                <p>7/1にマナーアップを行います。頭髪や身だしなみをきちんと整える習慣を身につけましょう。</p>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="screen screen--login" id="login-screen" data-screen="login" aria-labelledby="login-heading" hidden>
+          <form class="login-card">
+            <h1 id="login-heading">管理者ログイン</h1>
+            <label>
+              <span>メールアドレス</span>
+              <input type="email" name="email" autocomplete="email" placeholder="teacher@school.co.jp" />
+            </label>
+            <label>
+              <span>パスワード</span>
+              <input type="password" name="password" autocomplete="current-password" />
+            </label>
+            <button type="button" data-view-button="quick-admin">ログイン</button>
+          </form>
+        </section>
+
+        <section class="screen screen--quick-admin" id="quick-admin-screen" data-screen="quick-admin" aria-labelledby="quick-admin-heading" hidden>
+          <header class="admin-header">
+            <label class="profile-chip profile-chip--grade">
+              <span>学年:</span>
+              <select id="admin-grade" name="admin-grade">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+              </select>
+            </label>
+            <label class="profile-chip">
+              <span>月:</span>
+              <input type="number" name="month" min="1" max="12" />
+            </label>
+            <label class="profile-chip">
+              <span>日:</span>
+              <input type="number" name="day" min="1" max="31" />
+            </label>
+          </header>
+
+          <section class="admin-layout">
+            <section class="matrix-panel" aria-labelledby="quick-admin-heading">
+              <h1 class="visually-hidden" id="quick-admin-heading">浅い管理画面</h1>
+              <div class="timetable-matrix" id="change-matrix" role="grid" aria-label="時間割変更表">
+                <div class="matrix-cell matrix-cell--corner" role="columnheader"></div>
+                <div class="matrix-cell subject-humanities" role="columnheader">21H<br />探文</div>
+                <div class="matrix-cell subject-science" role="columnheader">21H<br />探理</div>
+                <div class="matrix-cell subject-science" role="columnheader">22H<br />理</div>
+                <div class="matrix-cell subject-humanities" role="columnheader">23H<br />文</div>
+                <div class="matrix-cell subject-humanities" role="columnheader">24H<br />文</div>
+                <div class="matrix-cell subject-science" role="columnheader">24H<br />理</div>
+                <div class="matrix-cell subject-humanities" role="columnheader">25H<br />文</div>
+                <div class="matrix-cell subject-science" role="columnheader">25H<br />理</div>
+                <div class="matrix-cell subject-agriculture" role="columnheader">26H<br />農</div>
+                <div class="matrix-cell subject-welfare" role="columnheader">27H<br />福</div>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">1限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">2限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell is-changed" type="button">何か</button>
+                <button class="matrix-cell" type="button"></button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">3限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell is-changed" type="button">論表</button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">4限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell is-changed" type="button">何か</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">5限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell is-changed" type="button">古典</button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">6限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">7限</div>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+                <button class="matrix-cell" type="button"></button>
+
+                <template id="matrix-empty-row-template">
+                  <div class="matrix-cell matrix-cell--period" role="rowheader"></div>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                  <button class="matrix-cell" type="button"></button>
+                </template>
+              </div>
+            </section>
+
+            <aside class="admin-side-panel" aria-labelledby="quick-side-heading">
+              <div class="panel-title">
+                <span aria-hidden="true">🔔</span>
+                <h2 id="quick-side-heading">お知らせ</h2>
+              </div>
+
+              <div class="segmented-control" role="tablist" aria-label="投稿種別">
+                <button type="button" role="tab" aria-selected="true" data-admin-mode="notice">お知らせ</button>
+                <button type="button" role="tab" aria-selected="false" data-admin-mode="history">変更履歴</button>
+              </div>
+
+              <div class="admin-post-list" aria-label="投稿済み一覧">
+                <article class="admin-post-card">
+                  <button type="button" aria-label="この投稿を削除">×</button>
+                  <p>SS科より連絡｜06/20〜06/29<br />6/29にワークを回収します。</p>
+                  <small>[2]年[3,4]組 文理:[全]</small>
+                </article>
+                <article class="admin-post-card">
+                  <button type="button" aria-label="この投稿を削除">×</button>
+                  <p>SS科より連絡｜06/27〜06/28<br />明日、数学にタブレットを使います。</p>
+                  <small>[2]年[3,4]組 文理:[理]</small>
+                </article>
+              </div>
+
+              <form class="post-form">
+                <label>
+                  <span>タイトル</span>
+                  <input type="text" name="post-title" placeholder="SS科より連絡" />
+                </label>
+                <label>
+                  <span>本文</span>
+                  <textarea name="post-body" rows="5" placeholder="連絡内容を入力"></textarea>
+                </label>
+                <label>
+                  <span>掲載期間</span>
+                  <input type="text" name="post-range" placeholder="06/27〜06/28" />
+                </label>
+                <fieldset>
+                  <legend>対象学年</legend>
+                  <label><input type="checkbox" name="target-grade" value="1" />1年</label>
+                  <label><input type="checkbox" name="target-grade" value="2" checked />2年</label>
+                  <label><input type="checkbox" name="target-grade" value="3" />3年</label>
+                </fieldset>
+                <fieldset>
+                  <legend>対象組</legend>
+                  <label><input type="checkbox" name="target-class" value="all" checked />全組</label>
+                  <label><input type="checkbox" name="target-class" value="1" />1組</label>
+                  <label><input type="checkbox" name="target-class" value="2" />2組</label>
+                  <label><input type="checkbox" name="target-class" value="3" />3組</label>
+                  <label><input type="checkbox" name="target-class" value="4" />4組</label>
+                  <label><input type="checkbox" name="target-class" value="5" />5組</label>
+                  <label><input type="checkbox" name="target-class" value="6" />6組</label>
+                  <label><input type="checkbox" name="target-class" value="7" />7組</label>
+                </fieldset>
+                <fieldset>
+                  <legend>対象文理</legend>
+                  <label><input type="checkbox" name="target-course" value="all" checked />全</label>
+                  <label><input type="checkbox" name="target-course" value="none" />なし</label>
+                  <label><input type="checkbox" name="target-course" value="humanities" />文系</label>
+                  <label><input type="checkbox" name="target-course" value="science" />理系</label>
+                  <label><input type="checkbox" name="target-course" value="explore-humanities" />探文</label>
+                  <label><input type="checkbox" name="target-course" value="explore-science" />探理</label>
+                </fieldset>
+                <button type="submit">投稿する</button>
+              </form>
+            </aside>
+          </section>
+        </section>
+
+        <section class="screen screen--deep-admin" id="deep-admin-screen" data-screen="deep-admin" aria-labelledby="deep-admin-heading" hidden>
+          <header class="deep-admin-header">
+            <label class="profile-chip profile-chip--grade">
+              <span>学年:</span>
+              <select id="deep-admin-grade" name="deep-admin-grade">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+              </select>
+            </label>
+            <h1 id="deep-admin-heading">詳細編集画面</h1>
+          </header>
+
+          <section class="admin-layout">
+            <section class="matrix-panel" aria-label="基本時間割編集">
+              <div class="timetable-matrix timetable-matrix--base" id="base-matrix" role="grid" aria-label="基本時間割">
+                <div class="matrix-cell matrix-cell--corner" role="columnheader"></div>
+                <div class="matrix-cell subject-humanities" role="columnheader">21H<br />探文</div>
+                <div class="matrix-cell subject-science" role="columnheader">21H<br />探理</div>
+                <div class="matrix-cell subject-science" role="columnheader">22H<br />理</div>
+                <div class="matrix-cell subject-humanities" role="columnheader">23H<br />文</div>
+                <div class="matrix-cell subject-humanities" role="columnheader">24H<br />文</div>
+                <div class="matrix-cell subject-science" role="columnheader">24H<br />理</div>
+                <div class="matrix-cell subject-humanities" role="columnheader">25H<br />文</div>
+                <div class="matrix-cell subject-science" role="columnheader">25H<br />理</div>
+                <div class="matrix-cell subject-agriculture" role="columnheader">26H<br />農</div>
+                <div class="matrix-cell subject-welfare" role="columnheader">27H<br />福</div>
+
+                <template id="base-row-template">
+                  <div class="matrix-cell matrix-cell--period" role="rowheader"></div>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                  <button class="matrix-cell" type="button">教科</button>
+                </template>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">1限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">2限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">3限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">4限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">5限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">6限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+
+                <div class="matrix-cell matrix-cell--period" role="rowheader">7限</div>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+                <button class="matrix-cell" type="button">教科</button>
+              </div>
+            </section>
+
+            <aside class="admin-side-panel" aria-labelledby="manager-list-heading">
+              <div class="panel-title">
+                <span aria-hidden="true">👤</span>
+                <h2 id="manager-list-heading">管理者一覧</h2>
+              </div>
+
+              <ul class="manager-list">
+                <li><button type="button" aria-label="削除">×</button><span>samplemail@school.co.jp</span></li>
+                <li><button type="button" aria-label="削除">×</button><span>samplemail2@school.co.jp</span></li>
+                <li><button type="button" aria-label="削除">×</button><span>samplemail3@school.co.jp</span></li>
+                <li><button type="button" aria-label="削除">×</button><span>samplemail4@school.co.jp</span></li>
+              </ul>
+
+              <form class="manager-form">
+                <label>
+                  <span class="visually-hidden">新規メールアドレス</span>
+                  <input type="email" name="new-manager-email" placeholder="新規メールアドレスを入力..." />
+                </label>
+                <button type="submit">追加</button>
+              </form>
+            </aside>
+          </section>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
