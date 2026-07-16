@@ -1,0 +1,1 @@
+window.CLASS_COURSE_OVERRIDES = {};

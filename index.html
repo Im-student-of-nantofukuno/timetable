@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>時間割連絡システム</title>
     <link rel="stylesheet" href="style.css" />
-    <script src="base_timetable.js" defer></script>
+    <script src="timetable_base.js" defer></script>
+    <script src="class_courses.js" defer></script>
     <script src="timetable_changes.js" defer></script>
     <script src="notification.js" defer></script>
     <script src="managers.js" defer></script>
@@ -301,32 +302,35 @@
                   <span>掲載期間</span>
                   <input type="text" name="post-range" placeholder="06/27〜06/28" />
                 </label>
-                <fieldset>
-                  <legend>対象学年</legend>
-                  <label><input type="checkbox" name="target-grade" value="1" />1年</label>
-                  <label><input type="checkbox" name="target-grade" value="2" checked />2年</label>
-                  <label><input type="checkbox" name="target-grade" value="3" />3年</label>
-                </fieldset>
-                <fieldset>
-                  <legend>対象組</legend>
-                  <label><input type="checkbox" name="target-class" value="all" checked />全組</label>
-                  <label><input type="checkbox" name="target-class" value="1" />1組</label>
-                  <label><input type="checkbox" name="target-class" value="2" />2組</label>
-                  <label><input type="checkbox" name="target-class" value="3" />3組</label>
-                  <label><input type="checkbox" name="target-class" value="4" />4組</label>
-                  <label><input type="checkbox" name="target-class" value="5" />5組</label>
-                  <label><input type="checkbox" name="target-class" value="6" />6組</label>
-                  <label><input type="checkbox" name="target-class" value="7" />7組</label>
-                </fieldset>
-                <fieldset>
-                  <legend>対象文理</legend>
-                  <label><input type="checkbox" name="target-course" value="all" checked />全</label>
-                  <label><input type="checkbox" name="target-course" value="none" />なし</label>
-                  <label><input type="checkbox" name="target-course" value="humanities" />文系</label>
-                  <label><input type="checkbox" name="target-course" value="science" />理系</label>
-                  <label><input type="checkbox" name="target-course" value="explore-humanities" />探文</label>
-                  <label><input type="checkbox" name="target-course" value="explore-science" />探理</label>
-                </fieldset>
+                <details class="target-settings">
+                  <summary id="target-summary">対象: 2年 / 全組 / 全</summary>
+                  <fieldset>
+                    <legend>対象学年</legend>
+                    <label><input type="checkbox" name="target-grade" value="1" />1年</label>
+                    <label><input type="checkbox" name="target-grade" value="2" checked />2年</label>
+                    <label><input type="checkbox" name="target-grade" value="3" />3年</label>
+                  </fieldset>
+                  <fieldset>
+                    <legend>対象組</legend>
+                    <label><input type="checkbox" name="target-class" value="all" checked />全組</label>
+                    <label><input type="checkbox" name="target-class" value="1" />1組</label>
+                    <label><input type="checkbox" name="target-class" value="2" />2組</label>
+                    <label><input type="checkbox" name="target-class" value="3" />3組</label>
+                    <label><input type="checkbox" name="target-class" value="4" />4組</label>
+                    <label><input type="checkbox" name="target-class" value="5" />5組</label>
+                    <label><input type="checkbox" name="target-class" value="6" />6組</label>
+                    <label><input type="checkbox" name="target-class" value="7" />7組</label>
+                  </fieldset>
+                  <fieldset>
+                    <legend>対象文理</legend>
+                    <label><input type="checkbox" name="target-course" value="all" checked />全</label>
+                    <label><input type="checkbox" name="target-course" value="none" />なし</label>
+                    <label><input type="checkbox" name="target-course" value="humanities" />文系</label>
+                    <label><input type="checkbox" name="target-course" value="science" />理系</label>
+                    <label><input type="checkbox" name="target-course" value="explore-humanities" />探文</label>
+                    <label><input type="checkbox" name="target-course" value="explore-science" />探理</label>
+                  </fieldset>
+                </details>
                 <button type="submit">投稿する</button>
               </form>
             </aside>

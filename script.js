@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   profile: "timetable.profile",
   baseTimetables: "timetable.baseTimetables",
+  classCourses: "timetable.classCourses",
   changes: "timetable.changes",
   notifications: "timetable.notifications",
   managers: "timetable.managers"
@@ -20,6 +21,7 @@ const state = {
     courses: {},
     classes: [],
     baseTimetables: {},
+    classCourses: {},
     changes: [],
     notifications: [],
     managers: []
@@ -36,6 +38,7 @@ function init() {
   bindEvents();
   restoreProfile();
   syncDateInputs();
+  updateTargetSummary();
   renderAll();
 }
 
@@ -44,11 +47,12 @@ function loadInitialData() {
 
   state.data.periods = timetableData.periods || [1, 2, 3, 4, 5, 6, 7];
   state.data.courses = timetableData.courses || {};
-  state.data.classes = timetableData.classes || [];
+  state.data.classCourses = readStored(STORAGE_KEYS.classCourses, window.CLASS_COURSE_OVERRIDES || {});
+  state.data.classes = applyClassCourseOverrides(timetableData.classes || []);
   state.data.baseTimetables = readStored(STORAGE_KEYS.baseTimetables, timetableData.baseTimetables || {});
   state.data.changes = readStored(STORAGE_KEYS.changes, window.TIMETABLE_CHANGES || []);
   state.data.notifications = readStored(STORAGE_KEYS.notifications, window.NOTIFICATIONS || []);
-  state.data.managers = readStored(STORAGE_KEYS.managers, window.MANAGERS || []);
+  state.data.managers = normalizeManagers(readStored(STORAGE_KEYS.managers, window.MANAGERS || []));
 }
 
 function bindEvents() {
@@ -95,6 +99,9 @@ function bindEvents() {
   });
 
   $(".post-form")?.addEventListener("submit", handlePostSubmit);
+  $$(".post-form input[type='checkbox']").forEach((input) => {
+    input.addEventListener("change", updateTargetSummary);
+  });
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
 }
 
@@ -248,7 +255,7 @@ function renderDeepAdmin() {
 
   matrix.style.setProperty("--class-count", classes.length);
   matrix.replaceChildren();
-  appendMatrixHeader(matrix, classes);
+  appendMatrixHeader(matrix, classes, true);
 
   state.data.periods.forEach((period) => {
     matrix.append(createCell(`${period}限`, "div", "matrix-cell matrix-cell--period"));
@@ -273,23 +280,33 @@ function renderManagers() {
   if (!list) return;
   list.replaceChildren();
 
-  state.data.managers.forEach((email) => {
+  state.data.managers.forEach((manager) => {
     const item = document.createElement("li");
     item.innerHTML = `
       <button type="button" aria-label="削除">×</button>
-      <span>${escapeHtml(email)}</span>
+      <span>${escapeHtml(manager.id)}</span>
     `;
-    $("button", item).addEventListener("click", () => deleteManager(email));
+    item.title = manager.email;
+    $("button", item).addEventListener("click", () => deleteManager(manager.id));
     list.append(item);
   });
 }
 
-function appendMatrixHeader(matrix, classes) {
+function appendMatrixHeader(matrix, classes, editableCourses = false) {
   matrix.append(createCell("", "div", "matrix-cell matrix-cell--corner"));
 
   classes.forEach((classItem) => {
-    const label = `${classItem.label}<br>${state.data.courses[classItem.course] || ""}`;
+    const courseLabel = state.data.courses[classItem.course] || "";
+    const label = editableCourses
+      ? `<span>${escapeHtml(classItem.label)}</span><button class="course-edit-button" type="button" data-class-id="${escapeHtml(classItem.id)}">${escapeHtml(courseLabel)}</button>`
+      : `${escapeHtml(classItem.label)}<br>${escapeHtml(courseLabel)}`;
     const cell = createCell(label, "div", `matrix-cell ${getSubjectClass(classItem.course)}`, true);
+    if (editableCourses) {
+      $(".course-edit-button", cell)?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        editClassCourse(classItem);
+      });
+    }
     matrix.append(cell);
   });
 }
@@ -313,9 +330,31 @@ function editChange(classItem, period, existingChange) {
       subject: trimmed,
       note: "画面から追加"
     });
+    addChangeHistory(classItem, period, trimmed);
   }
 
   saveStored(STORAGE_KEYS.changes, state.data.changes);
+  renderQuickAdmin();
+  renderStudent();
+}
+
+function editClassCourse(classItem) {
+  const entries = Object.entries(state.data.courses);
+  const menu = entries.map(([value, label], index) => `${index + 1}: ${label}`).join("\n");
+  const currentIndex = Math.max(0, entries.findIndex(([value]) => value === classItem.course));
+  const answer = prompt(`${classItem.label} の文理を選択してください\n${menu}`, String(currentIndex + 1));
+  if (answer === null) return;
+
+  const selected = entries[Number(answer) - 1];
+  if (!selected) {
+    alert("一覧の番号で選択してください。");
+    return;
+  }
+
+  state.data.classCourses[classItem.id] = selected[0];
+  saveStored(STORAGE_KEYS.classCourses, state.data.classCourses);
+  state.data.classes = applyClassCourseOverrides(state.data.classes);
+  renderDeepAdmin();
   renderQuickAdmin();
   renderStudent();
 }
@@ -363,6 +402,7 @@ function handlePostSubmit(event) {
   $("input[name='target-grade'][value='2']", form).checked = true;
   $("input[name='target-class'][value='all']", form).checked = true;
   $("input[name='target-course'][value='all']", form).checked = true;
+  updateTargetSummary();
   renderAdminPosts();
   renderStudentNotices();
 }
@@ -377,12 +417,12 @@ function handleManagerSubmit(event) {
     alert("メールアドレスの形式を確認してください。");
     return;
   }
-  if (state.data.managers.includes(email)) {
+  if (state.data.managers.some((manager) => manager.email === email)) {
     alert("同じメールアドレスがすでに登録されています。");
     return;
   }
 
-  state.data.managers.push(email);
+  state.data.managers.push({ id: createManagerId(), email });
   saveStored(STORAGE_KEYS.managers, state.data.managers);
   input.value = "";
   renderManagers();
@@ -395,8 +435,8 @@ function deleteNotification(id) {
   renderStudentNotices();
 }
 
-function deleteManager(email) {
-  state.data.managers = state.data.managers.filter((manager) => manager !== email);
+function deleteManager(id) {
+  state.data.managers = state.data.managers.filter((manager) => manager.id !== id);
   saveStored(STORAGE_KEYS.managers, state.data.managers);
   renderManagers();
 }
@@ -479,6 +519,59 @@ function getSubjectClass(course) {
   if (course === "agriculture") return "subject-agriculture";
   if (course === "welfare") return "subject-welfare";
   return "subject-humanities";
+}
+
+function applyClassCourseOverrides(classes) {
+  return classes.map((classItem) => ({
+    ...classItem,
+    course: state.data.classCourses[classItem.id] || classItem.course
+  }));
+}
+
+function normalizeManagers(managers) {
+  return managers.map((manager) => {
+    if (typeof manager === "string") {
+      return { id: createManagerId(), email: manager };
+    }
+    return manager;
+  });
+}
+
+function createManagerId() {
+  return `mgr-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function addChangeHistory(classItem, period, subject) {
+  state.data.notifications.unshift({
+    id: `history-${Date.now()}`,
+    kind: "history",
+    title: "時間割変更",
+    range: formatDateForDisplay(state.adminDate),
+    body: `${classItem.label} ${state.data.courses[classItem.course] || ""} ${period}限を「${subject}」に変更しました。`,
+    teacherId: "local-admin",
+    targets: {
+      grades: [classItem.grade],
+      classes: [classItem.classNo],
+      courses: [classItem.course]
+    }
+  });
+  saveStored(STORAGE_KEYS.notifications, state.data.notifications);
+}
+
+function updateTargetSummary() {
+  const form = $(".post-form");
+  const summary = $("#target-summary");
+  if (!form || !summary) return;
+
+  const grades = getCheckedValues(form, "target-grade").map((value) => value === "all" ? "全学年" : `${value}年`);
+  const classes = getCheckedValues(form, "target-class").map((value) => value === "all" ? "全組" : `${value}組`);
+  const courses = getCheckedValues(form, "target-course").map((value) => value === "all" ? "全" : state.data.courses[value] || value);
+  summary.textContent = `対象: ${grades.join(",")} / ${classes.join(",")} / ${courses.join(",")}`;
+}
+
+function formatDateForDisplay(dateText) {
+  const [, month, day] = dateText.split("-");
+  return `${month}/${day}`;
 }
 
 function createCell(content, tagName = "div", className = "matrix-cell", allowHtml = false) {

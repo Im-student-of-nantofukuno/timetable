@@ -46,5 +46,17 @@ window.NOTIFICATIONS = [
       classes: ["4"],
       courses: ["humanities"]
     }
-  }
+  },
+ {
+    id: "notice-aa-20260a25",
+    kind: "notice",
+    title: "AA委員会より連絡",
+    range: "06/25〜07/01",
+    body: "7/1にマナーアップを行います。頭髪や身だしなみをきちんと整える習慣を身につけましょう。",
+    targets: {
+      grades: ["all"],
+      classes: ["all"],
+      courses: ["all"]
+    }
+  },  
 ];
