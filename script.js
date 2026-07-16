@@ -1,3 +1,4 @@
+localStorage.clear();
 const STORAGE_KEYS = {
   profile: "timetable.profile",
   baseTimetables: "timetable.baseTimetables",
