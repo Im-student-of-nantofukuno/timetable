@@ -4,7 +4,7 @@ window.TIMETABLE_CHANGES = [
     date: "2026-07-05",
     classId: "2-4-humanities",
     period: 5,
-    subject: "古典",
+    subject: "現文",
     note: "国語辞典を持参"
   },
   {
