@@ -1,4 +1,8 @@
-localStorage.clear();
+const FORCE_RESET = True;
+
+if (FORCE_RESET) {
+    localStorage.clear();
+}
 const STORAGE_KEYS = {
   profile: "timetable.profile",
   baseTimetables: "timetable.baseTimetables",
