@@ -4,7 +4,7 @@ if (FORCE_RESET) {
 }
 
 async function testInsertClass() {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabaseClient
         .from("classes")
         .insert([
             {
