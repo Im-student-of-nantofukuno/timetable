@@ -1,5 +1,5 @@
 console.log("supabase_client.js loaded");
-const SUPABASE_URL = "https://uuihsdzowdohkqcveuwf.supabase.co/rest/v1/classes";
+const SUPABASE_URL = "https://uuihsdzowdohkqcveuwf.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1aWhzZHpvd2RvaGtxY3ZldXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDUzODksImV4cCI6MjA5NzQyMTM4OX0.6voaRCeU6cB3c88GBNyQMAbgntJiF8jkvb9lcJ5QNGM";
 
 window.supabaseClient = window.supabase.createClient(
