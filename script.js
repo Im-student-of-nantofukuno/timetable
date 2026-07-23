@@ -3,16 +3,26 @@ if (FORCE_RESET) {
     localStorage.clear();
 }
 
-async function testConnection() {
+async function testInsertClass() {
     const { data, error } = await window.supabaseClient
         .from("classes")
-        .select("*");
+        .insert([
+            {
+                id: "1-1-無し",
+                grade: 1,
+                class_no: 1,
+                course: "無し",
+                label: "1年1組",
+                school_year: 2026
+            }
+        ])
+        .select();
 
     console.log("data:", data);
     console.log("error:", error);
 }
 
-testConnection();
+testInsertClass();
 
 const STORAGE_KEYS = {
   profile: "timetable.profile",
