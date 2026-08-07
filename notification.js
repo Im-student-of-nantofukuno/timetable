@@ -43,7 +43,7 @@ window.NOTIFICATIONS = [
     kind: "notice",
     title: "AA委員会より連絡",
     display_start: "2026-06-25T00:00:00+09:00",
-    display_end:"2026-07-01T23:59:5909:00",
+    display_end:"2026-07-01T23:59:59+09:00",
     body: "7/1にマナーアップを行います。頭髪や身だしなみをきちんと整える習慣を身につけましょう。",
     targets: {
       grades: ["all"],
