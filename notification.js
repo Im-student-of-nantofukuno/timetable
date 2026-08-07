@@ -15,7 +15,7 @@ window.NOTIFICATIONS = [
     id: "notice-ss-20260806",
     kind: "notice",
     title: "制作者より連絡",
-    range: "06/27〜06/28",
+    range: "06/27〜09/28",
     body: "cloduflare連携チェック",
     targets: {
       grades: ["all"],
