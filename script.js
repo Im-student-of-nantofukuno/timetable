@@ -11,6 +11,13 @@ async function testInsertNotifications() {
 
     console.log("data:", data);
     console.log("error:", error);
+    
+    if (error) {
+        console.log("code:", error.code);
+        console.log("message:", error.message);
+        console.log("details:", error.details);
+        console.log("hint:", error.hint);
+    }
 }
 
 testInsertNotifications();
