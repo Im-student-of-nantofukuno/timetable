@@ -12,6 +12,18 @@ window.NOTIFICATIONS = [
     }
   },
   {
+    id: "notice-ss-20260806",
+    kind: "notice",
+    title: "制作者より連絡",
+    range: "06/27〜06/28",
+    body: "cloduflare連携チェック",
+    targets: {
+      grades: ["all"],
+      classes: ["all"],
+      courses: ["all"]
+    }
+  }
+  {
     id: "notice-ss-20260620",
     kind: "notice",
     title: "SS科より連絡",
