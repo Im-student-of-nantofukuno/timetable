@@ -22,7 +22,7 @@ window.NOTIFICATIONS = [
       classes: ["all"],
       courses: ["all"]
     }
-  }
+  },
   {
     id: "notice-ss-20260620",
     kind: "notice",
