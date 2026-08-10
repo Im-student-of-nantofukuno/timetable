@@ -3,25 +3,6 @@ if (FORCE_RESET) {
     localStorage.clear();
 }
 
-async function testInsertNotifications() {
-    const { data, error } = await window.supabaseClient
-        .from("notifications")
-        .insert(window.NOTIFICATIONS)
-        .select();
-
-    console.log("data:", data);
-    console.log("error:", error);
-    
-    if (error) {
-        console.log("code:", error.code);
-        console.log("message:", error.message);
-        console.log("details:", error.details);
-        console.log("hint:", error.hint);
-    }
-}
-
-testInsertNotifications();
-
 const STORAGE_KEYS = {
   profile: "timetable.profile",
   baseTimetables: "timetable.baseTimetables",
@@ -57,8 +38,8 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 
 document.addEventListener("DOMContentLoaded", init);
 
-function init() {
-  loadInitialData();
+async function init() {
+  await loadInitialData();
   bindEvents();
   restoreProfile();
   syncDateInputs();
@@ -66,17 +47,60 @@ function init() {
   renderAll();
 }
 
-function loadInitialData() {
+async function loadInitialData() {
   const timetableData = window.TIMETABLE_DATA || {};
 
   state.data.periods = timetableData.periods || [1, 2, 3, 4, 5, 6, 7];
   state.data.courses = timetableData.courses || {};
-  state.data.classCourses = readStored(STORAGE_KEYS.classCourses, window.CLASS_COURSE_OVERRIDES || {});
+  state.data.classCourses = readStored(
+    STORAGE_KEYS.classCourses,
+    window.CLASS_COURSE_OVERRIDES || {}
+  );
   state.data.classes = applyClassCourseOverrides(timetableData.classes || []);
-  state.data.baseTimetables = readStored(STORAGE_KEYS.baseTimetables, timetableData.baseTimetables || {});
-  state.data.changes = readStored(STORAGE_KEYS.changes, window.TIMETABLE_CHANGES || []);
-  state.data.notifications = readStored(STORAGE_KEYS.notifications, window.NOTIFICATIONS || []);
-  state.data.managers = normalizeManagers(readStored(STORAGE_KEYS.managers, window.MANAGERS || []));
+  state.data.baseTimetables = readStored(
+    STORAGE_KEYS.baseTimetables,
+    timetableData.baseTimetables || {}
+  );
+  state.data.changes = readStored(
+    STORAGE_KEYS.changes,
+    window.TIMETABLE_CHANGES || []
+  );
+  // お知らせはSupabaseから取得
+  const { data, error } = await window.supabaseClient
+    .from("notifications")
+    .select("*");
+  if (error) {
+    console.error("notifications取得失敗:", error);
+    // Supabase取得失敗時は一時的にlocalStorageを使用
+    state.data.notifications = readStored(
+      STORAGE_KEYS.notifications,
+      window.NOTIFICATIONS || []
+    );
+  } else {
+    console.log("notifications取得成功:", data);
+    state.data.notifications = data || [];
+  }
+  state.data.managers = normalizeManagers(
+    readStored(STORAGE_KEYS.managers, window.MANAGERS || [])
+  );
+}
+
+function isNotificationActive(notification) {
+  const now = new Date();
+  const start = new Date(notification.display_start);
+  const end = new Date(notification.display_end);
+  return now >= start && now <= end;
+}
+
+function formatNotificationRange(notification) {
+  const start = new Date(notification.display_start);
+  const end = new Date(notification.display_end);
+  const startText = `${start.getMonth() + 1}/${start.getDate()}`;
+  const endText = `${end.getMonth() + 1}/${end.getDate()}`;
+  if (startText === endText) {
+    return startText;
+  }
+  return `${startText}〜${endText}`;
 }
 
 function bindEvents() {
@@ -194,7 +218,9 @@ function renderStudentNotices() {
   if (!container) return;
 
   const notices = state.data.notifications.filter((notice) => {
-    return notice.kind === "notice" && matchesTargets(notice.targets, state.profile);
+  return notice.kind === "notice"
+    && isNotificationActive(notice)
+    && matchesTargets(notice.targets, state.profile);
   });
 
   container.replaceChildren();
@@ -263,7 +289,7 @@ function renderAdminPosts() {
     card.className = "admin-post-card";
     card.innerHTML = `
       <button type="button" aria-label="この投稿を削除">×</button>
-      <p>${escapeHtml(post.title)}｜${escapeHtml(post.range || "")}<br>${escapeHtml(post.body)}</p>
+      <p>${escapeHtml(post.title)}｜${escapeHtml(formatNotificationRange(post))}<br>${escapeHtml(post.body)}</p>
       <small>${formatTargets(post.targets)}</small>
     `;
     $("button", card).addEventListener("click", () => deleteNotification(post.id));
