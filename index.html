@@ -303,8 +303,13 @@
                   <textarea name="post-body" rows="5" placeholder="連絡内容を入力"></textarea>
                 </label>
                 <label>
-                  <span>掲載期間</span>
-                  <input type="text" name="post-range" placeholder="06/27〜06/28" />
+                <span>掲載開始</span>
+                  <input type="datetime-local" name="post-start" />
+                </label>
+
+                <label>
+                <span>掲載終了</span>
+                <input type="datetime-local" name="post-end" />
                 </label>
                 <details class="target-settings">
                   <summary id="target-summary">対象: 2年 / 全組 / 全</summary>
