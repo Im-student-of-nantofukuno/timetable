@@ -422,32 +422,48 @@ function editBaseSubject(classItem, period, currentSubject) {
   renderStudent();
 }
 
-function handlePostSubmit(event) {
+async function handlePostSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const title = form.elements["post-title"].value.trim();
   const body = form.elements["post-body"].value.trim();
-  const range = form.elements["post-range"].value.trim();
-
-  if (!title || !body) {
-    alert("タイトルと本文を入力してください。");
+  const displayStart = form.elements["post-start"].value;
+  const displayEnd = form.elements["post-end"].value;
+  if (!title || !body || !displayStart || !displayEnd) {
+    alert("タイトル・本文・掲載期間を入力してください。");
     return;
   }
 
-  state.data.notifications.unshift({
+  const start = new Date(displayStart);
+  const end = new Date(displayEnd);
+  if (start > end) {
+    alert("掲載開始は掲載終了より前にしてください。");
+    return;
+  }
+  const notification = {
     id: `post-${Date.now()}`,
     kind: state.adminMode,
     title,
-    range,
+    display_start: start.toISOString(),
+    display_end: end.toISOString(),
     body,
     targets: {
       grades: getCheckedValues(form, "target-grade"),
       classes: getCheckedValues(form, "target-class"),
       courses: getCheckedValues(form, "target-course")
     }
-  });
-
-  saveStored(STORAGE_KEYS.notifications, state.data.notifications);
+  };
+  const { data, error } = await window.supabaseClient
+    .from("notifications")
+    .insert([notification])
+    .select();
+  if (error) {
+    console.error("お知らせ投稿失敗:", error);
+    alert("お知らせの投稿に失敗しました。");
+    return;
+  }
+  console.log("お知らせ投稿成功:", data);
+  state.data.notifications.unshift(data[0]);
   form.reset();
   $("input[name='target-grade'][value='2']", form).checked = true;
   $("input[name='target-class'][value='all']", form).checked = true;
