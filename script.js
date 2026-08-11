@@ -412,11 +412,9 @@ function editClassCourse(classItem) {
 function editBaseSubject(classItem, period, currentSubject) {
   const subject = prompt(`${classItem.label} ${state.data.courses[classItem.course]} ${period}限の基本教科`, currentSubject || "");
   if (subject === null) return;
-
   const timetable = [...(state.data.baseTimetables[classItem.id] || Array(7).fill(""))];
   timetable[period - 1] = subject.trim();
   state.data.baseTimetables[classItem.id] = timetable;
-
   saveStored(STORAGE_KEYS.baseTimetables, state.data.baseTimetables);
   renderDeepAdmin();
   renderStudent();
@@ -425,27 +423,30 @@ function editBaseSubject(classItem, period, currentSubject) {
 async function handlePostSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
+
   const title = form.elements["post-title"].value.trim();
   const body = form.elements["post-body"].value.trim();
-  const displayStart = form.elements["post-start"].value;
-  const displayEnd = form.elements["post-end"].value;
-  if (!title || !body || !displayStart || !displayEnd) {
-    alert("タイトル・本文・掲載期間を入力してください。");
+  const startDate = form.elements["post-start"].value;
+  const endDate = form.elements["post-end"].value;
+  // 必須項目の確認
+  if (!title || !body || !startDate || !endDate) {
+    alert("タイトル・本文・掲載開始日・掲載終了日を入力してください。");
     return;
   }
-
-  const start = new Date(displayStart);
-  const end = new Date(displayEnd);
-  if (start > end) {
-    alert("掲載開始は掲載終了より前にしてください。");
+  // 開始日と終了日の前後関係を確認
+  if (endDate < startDate) {
+    alert("掲載終了日は掲載開始日以降の日付にしてください。");
     return;
   }
+  // 日付をSupabase保存用の日時に変換
+  const displayStart = `${startDate}T00:00:00+09:00`;
+  const displayEnd = `${endDate}T23:59:59+09:00`;
   const notification = {
     id: `post-${Date.now()}`,
     kind: state.adminMode,
     title,
-    display_start: start.toISOString(),
-    display_end: end.toISOString(),
+    display_start: displayStart,
+    display_end: displayEnd,
     body,
     targets: {
       grades: getCheckedValues(form, "target-grade"),
@@ -453,6 +454,7 @@ async function handlePostSubmit(event) {
       courses: getCheckedValues(form, "target-course")
     }
   };
+  // Supabaseへ保存
   const { data, error } = await window.supabaseClient
     .from("notifications")
     .insert([notification])
@@ -463,8 +465,11 @@ async function handlePostSubmit(event) {
     return;
   }
   console.log("お知らせ投稿成功:", data);
+  // Supabaseに保存されたデータを画面側にも反映
   state.data.notifications.unshift(data[0]);
+  // フォームを初期化
   form.reset();
+  // 対象設定を初期状態に戻す
   $("input[name='target-grade'][value='2']", form).checked = true;
   $("input[name='target-class'][value='all']", form).checked = true;
   $("input[name='target-course'][value='all']", form).checked = true;
