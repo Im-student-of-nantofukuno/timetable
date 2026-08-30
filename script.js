@@ -133,9 +133,26 @@ function formatNotificationRange(notification) {
 }
 
 function bindEvents() {
-  $$("[data-view-button]").forEach((button) => {
-    button.addEventListener("click", () => setView(button.dataset.viewButton));
+$$("[data-view-button]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const targetView = button.dataset.viewButton;
+
+    // 管理画面を開こうとした場合
+    if (targetView === "quick-admin" || targetView === "deep-admin") {
+      // 認証済みならそのまま管理画面へ
+      if (state.authenticated) {
+        setView(targetView);
+      } else {
+        // 未認証ならログイン画面へ
+        setView("login");
+      }
+      return;
+    }
+
+    setView(targetView);
   });
+});
+  $("#logout-button")?.addEventListener("click", handleLogout);
 
   ["#student-grade", "#student-class", "#student-course"].forEach((selector) => {
     const element = $(selector);
@@ -204,6 +221,18 @@ async function handleGoogleLogin() {
       message.textContent = "ログインに失敗しました。";
     }
   }
+}
+
+async function handleLogout() {
+  const { error } = await window.supabaseClient.auth.signOut();
+
+  if (error) {
+    console.error("ログアウト失敗:", error);
+    alert("ログアウトに失敗しました。");
+    return;
+  }
+
+  console.log("ログアウトしました");
 }
 
 function restoreProfile() {
