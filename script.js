@@ -55,8 +55,8 @@ function setupAuth() {
 
     if (session) {
       console.log("認証済み:", session.user.email);
-      setView("quick-admin");
-    } else if (event === "SIGNED_OUT") {
+    } 
+    else if (event === "SIGNED_OUT") {
       setView("student");
     }
   });
@@ -71,7 +71,6 @@ function setupAuth() {
 
     if (data.session) {
       console.log("既に認証済み:", data.session.user.email);
-      setView("quick-admin");
     }
   });
 }
@@ -134,17 +133,35 @@ function formatNotificationRange(notification) {
 
 function bindEvents() {
 $$("[data-view-button]").forEach((button) => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     const targetView = button.dataset.viewButton;
 
-    // 管理画面を開こうとした場合
+    // 管理者ログインアイコン
+    if (targetView === "login") {
+      const { data, error } = await window.supabaseClient.auth.getSession();
+
+      if (error) {
+        console.error("認証状態の確認に失敗:", error);
+        return;
+      }
+
+      if (data.session) {
+        // すでに認証済みなら浅い管理画面へ
+        setView("quick-admin");
+      } else {
+        // 未認証ならGoogleログインを開始
+        handleGoogleLogin();
+      }
+
+      return;
+    }
+
+    // 浅い管理画面・詳細管理画面
     if (targetView === "quick-admin" || targetView === "deep-admin") {
-      // 認証済みならそのまま管理画面へ
       if (state.authenticated) {
         setView(targetView);
       } else {
-        // 未認証ならログイン画面へ
-        setView("login");
+        handleGoogleLogin();
       }
       return;
     }
@@ -221,18 +238,6 @@ async function handleGoogleLogin() {
       message.textContent = "ログインに失敗しました。";
     }
   }
-}
-
-async function handleLogout() {
-  const { error } = await window.supabaseClient.auth.signOut();
-
-  if (error) {
-    console.error("ログアウト失敗:", error);
-    alert("ログアウトに失敗しました。");
-    return;
-  }
-
-  console.log("ログアウトしました");
 }
 
 function restoreProfile() {
