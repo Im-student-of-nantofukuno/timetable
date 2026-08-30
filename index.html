@@ -119,18 +119,12 @@
         </section>
 
         <section class="screen screen--login" id="login-screen" data-screen="login" aria-labelledby="login-heading" hidden>
-          <form class="login-card">
+          <div class="login-card">
             <h1 id="login-heading">管理者ログイン</h1>
-            <label>
-              <span>メールアドレス</span>
-              <input type="email" name="email" autocomplete="email" placeholder="teacher@school.co.jp" />
-            </label>
-            <label>
-              <span>パスワード</span>
-              <input type="password" name="password" autocomplete="current-password" />
-            </label>
-            <button type="button" data-view-button="quick-admin">ログイン</button>
-          </form>
+            <p>管理者用Googleアカウントでログインしてください。</p>
+            <button type="button" id="google-login-button">Googleでログイン</button>
+            <p id="login-message"></p>
+          </div>
         </section>
 
         <section class="screen screen--quick-admin" id="quick-admin-screen" data-screen="quick-admin" aria-labelledby="quick-admin-heading" hidden>
