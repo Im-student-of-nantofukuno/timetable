@@ -41,10 +41,34 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   await loadInitialData();
   bindEvents();
+  setupAuth();
   restoreProfile();
   syncDateInputs();
   updateTargetSummary();
   renderAll();
+}
+
+function setupAuth() {
+  window.supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      console.log("認証済み:", session.user.email);
+      setView("quick-admin");
+    } else if (event === "SIGNED_OUT") {
+      setView("student");
+    }
+  });
+
+  window.supabaseClient.auth.getSession().then(({ data, error }) => {
+    if (error) {
+      console.error("認証状態取得失敗:", error);
+      return;
+    }
+
+    if (data.session) {
+      console.log("既に認証済み:", data.session.user.email);
+      setView("quick-admin");
+    }
+  });
 }
 
 async function loadInitialData() {
