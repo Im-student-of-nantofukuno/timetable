@@ -1,4 +1,4 @@
-const FORCE_RESET = true;
+const FORCE_RESET = false;
 if (FORCE_RESET) {
     localStorage.clear();
 }
