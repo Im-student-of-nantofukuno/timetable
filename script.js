@@ -147,10 +147,34 @@ function bindEvents() {
   });
 
   $(".post-form")?.addEventListener("submit", handlePostSubmit);
+  $("#google-login-button")?.addEventListener("click", handleGoogleLogin);
   $$(".post-form input[type='checkbox']").forEach((input) => {
     input.addEventListener("change", updateTargetSummary);
   });
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
+}
+
+async function handleGoogleLogin() {
+  const message = $("#login-message");
+
+  if (message) {
+    message.textContent = "Googleログイン画面を開いています……";
+  }
+
+  const { error } = await window.supabaseClient.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+
+  if (error) {
+    console.error("Googleログイン失敗:", error);
+
+    if (message) {
+      message.textContent = "ログインに失敗しました。";
+    }
+  }
 }
 
 function restoreProfile() {
