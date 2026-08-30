@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
 const state = {
   view: "student",
   adminMode: "notice",
+  authenticated: false,
   profile: {
     grade: "2",
     classNo: "4",
@@ -50,6 +51,8 @@ async function init() {
 
 function setupAuth() {
   window.supabaseClient.auth.onAuthStateChange((event, session) => {
+    state.authenticated = !!session;
+
     if (session) {
       console.log("認証済み:", session.user.email);
       setView("quick-admin");
@@ -63,6 +66,8 @@ function setupAuth() {
       console.error("認証状態取得失敗:", error);
       return;
     }
+
+    state.authenticated = !!data.session;
 
     if (data.session) {
       console.log("既に認証済み:", data.session.user.email);
@@ -225,6 +230,14 @@ function renderAll() {
 }
 
 function setView(viewName) {
+  // 管理画面は認証済みユーザーだけが入れる
+  if (
+    (viewName === "quick-admin" || viewName === "deep-admin") &&
+    !state.authenticated
+  ) {
+    viewName = "login";
+  }
+
   state.view = viewName;
   $(".app-shell")?.setAttribute("data-view", viewName);
 
@@ -233,7 +246,10 @@ function setView(viewName) {
   });
 
   $$("[data-view-button]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.viewButton === viewName);
+    button.classList.toggle(
+      "is-active",
+      button.dataset.viewButton === viewName
+    );
   });
 }
 
