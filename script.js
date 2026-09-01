@@ -17,6 +17,7 @@ const state = {
   adminMode: "notice",
   authenticated: false,
   adminProfile: null,
+ adminProfiles: null,
   profile: {
     grade: "2",
     classNo: "4",
@@ -223,7 +224,8 @@ $$("[data-view-button]").forEach((button) => {
   });
 });
   $("#logout-button")?.addEventListener("click", handleLogout);
-
+  $("#show-admin-profiles")?.addEventListener("click", loadAdminProfiles);
+    
   ["#student-grade", "#student-class", "#student-course"].forEach((selector) => {
     const element = $(selector);
     if (!element) return;
@@ -268,6 +270,61 @@ $$("[data-view-button]").forEach((button) => {
     input.addEventListener("change", updateTargetSummary);
   });
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
+}
+
+async function loadAdminProfiles() {
+  const button = $("#show-admin-profiles");
+  const list = $("#admin-profile-list");
+
+  if (!button || !list) return;
+
+  // すでに取得済みなら、Supabaseへ再アクセスしない
+  if (state.adminProfiles !== null) {
+    list.hidden = !list.hidden;
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "読み込み中…";
+
+  const { data, error } = await window.supabaseClient
+    .from("admin_profiles")
+    .select("display_name, role");
+
+  if (error) {
+    console.error("管理者一覧取得失敗:", error);
+    button.disabled = false;
+    button.textContent = "管理者一覧を見る";
+    alert("管理者一覧の取得に失敗しました。");
+    return;
+  }
+
+  console.log("管理者一覧取得成功:", data);
+
+  state.adminProfiles = data || [];
+
+  list.replaceChildren();
+
+  if (!state.adminProfiles.length) {
+    list.append(createEmptyState("登録されている管理者はいません。"));
+  } else {
+    state.adminProfiles.forEach((profile) => {
+      const item = document.createElement("li");
+
+      const name = document.createElement("span");
+      name.textContent = profile.display_name || "表示名未設定";
+
+      const role = document.createElement("span");
+      role.textContent = profile.role || "role未設定";
+
+      item.append(name, role);
+      list.append(item);
+    });
+  }
+
+  list.hidden = false;
+  button.disabled = false;
+  button.textContent = "管理者一覧を閉じる";
 }
 
 async function handleGoogleLogin() {
