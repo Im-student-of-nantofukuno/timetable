@@ -278,9 +278,7 @@ async function loadAdminProfiles() {
 
   if (!button || !list) return;
 
-  // すでに取得済みなら、Supabaseへ再アクセスしない
   if (state.adminProfiles !== null) {
-    list.hidden = !list.hidden;
     return;
   }
 
@@ -311,20 +309,23 @@ async function loadAdminProfiles() {
     state.adminProfiles.forEach((profile) => {
       const item = document.createElement("li");
 
-      const name = document.createElement("span");
-      name.textContent = profile.display_name || "表示名未設定";
-
       const role = document.createElement("span");
       role.textContent = profile.role || "role未設定";
 
-      item.append(name, role);
+      const separator = document.createElement("span");
+      separator.textContent = " : ";
+
+      const name = document.createElement("span");
+      name.textContent = profile.display_name || "表示名未設定";
+
+      item.append(role, separator, name);
       list.append(item);
     });
   }
 
   list.hidden = false;
   button.disabled = false;
-  button.textContent = "管理者一覧を閉じる";
+  button.textContent = "管理者一覧";
 }
 
 async function handleGoogleLogin() {
