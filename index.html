@@ -468,26 +468,15 @@
               </div>
             </section>
 
-            <aside class="admin-side-panel" aria-labelledby="manager-list-heading">
+            <aside class="admin-side-panel" aria-labelledby="admin-profile-list-heading">
               <div class="panel-title">
                 <span aria-hidden="true">👤</span>
-                <h2 id="manager-list-heading">管理者一覧</h2>
+                <h2 id="admin-profile-list-heading">管理者</h2>
               </div>
 
-              <ul class="manager-list">
-                <li><button type="button" aria-label="削除">×</button><span>samplemail@school.co.jp</span></li>
-                <li><button type="button" aria-label="削除">×</button><span>samplemail2@school.co.jp</span></li>
-                <li><button type="button" aria-label="削除">×</button><span>samplemail3@school.co.jp</span></li>
-                <li><button type="button" aria-label="削除">×</button><span>samplemail4@school.co.jp</span></li>
-              </ul>
+              <button type="button" id="show-admin-profiles">管理者一覧を見る</button>
 
-              <form class="manager-form">
-                <label>
-                  <span class="visually-hidden">新規メールアドレス</span>
-                  <input type="email" name="new-manager-email" placeholder="新規メールアドレスを入力..." />
-                </label>
-                <button type="submit">追加</button>
-              </form>
+              <ul class="admin-profile-list" id="admin-profile-list" hidden></ul>
             </aside>
           </section>
         </section>
