@@ -324,8 +324,7 @@ async function loadAdminProfiles() {
   }
 
   list.hidden = false;
-  button.disabled = false;
-  button.textContent = "管理者一覧";
+  button.remove();
 }
 
 async function handleGoogleLogin() {
