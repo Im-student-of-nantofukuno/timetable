@@ -16,6 +16,7 @@ const state = {
   view: "student",
   adminMode: "notice",
   authenticated: false,
+  adminProfile: null,
   profile: {
     grade: "2",
     classNo: "4",
@@ -42,35 +43,80 @@ document.addEventListener("DOMContentLoaded", init);
 async function init() {
   await loadInitialData();
   bindEvents();
-  setupAuth();
+  await setupAuth();
   restoreProfile();
   syncDateInputs();
   updateTargetSummary();
   renderAll();
 }
 
-function setupAuth() {
-  window.supabaseClient.auth.onAuthStateChange((event, session) => {
+async function setupAuth() {
+  const checkAdminProfile = async (session) => {
     state.authenticated = !!session;
+    state.adminProfile = null;
 
-    if (session) {
-      console.log("認証済み:", session.user.email);
-    } 
-    else if (event === "SIGNED_OUT") {
-      setView("student");
+    if (!session) {
+      console.log("未認証");
+      return false;
     }
-  });
 
-  window.supabaseClient.auth.getSession().then(({ data, error }) => {
+    console.log("認証済み:", session.user.email);
+
+    const { data, error } = await window.supabaseClient
+      .from("admin_profiles")
+      .select("user_id, display_name, role")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
     if (error) {
-      console.error("認証状態取得失敗:", error);
+      console.error("管理者プロフィール取得失敗:", error);
+      return false;
+    }
+
+    if (!data) {
+      console.log("管理者プロフィールなし");
+      return false;
+    }
+
+    state.adminProfile = data;
+
+    console.log("管理者プロフィール:", data);
+
+    return data.role === "admin";
+  };
+
+  const {
+    data: { session },
+    error
+  } = await window.supabaseClient.auth.getSession();
+
+  if (error) {
+    console.error("認証状態取得失敗:", error);
+    return;
+  }
+
+  const isAdmin = await checkAdminProfile(session);
+
+  if (isAdmin && state.view === "student") {
+    // ここでは自動的に管理画面へ飛ばさず、
+    // 管理者アイコンを押したときに入れるようにする
+    console.log("管理者として認証されています");
+  }
+
+  window.supabaseClient.auth.onAuthStateChange(async (event, newSession) => {
+    const isAdmin = await checkAdminProfile(newSession);
+
+    if (!newSession) {
+      setView("student");
       return;
     }
 
-    state.authenticated = !!data.session;
-
-    if (data.session) {
-      console.log("既に認証済み:", data.session.user.email);
+    if (event === "SIGNED_IN") {
+      console.log(
+        isAdmin
+          ? "管理者としてログインしました"
+          : "一般ユーザーとしてログインしました"
+      );
     }
   });
 }
@@ -138,19 +184,26 @@ $$("[data-view-button]").forEach((button) => {
 
     // 管理者ログインアイコン
     if (targetView === "login") {
-      const { data, error } = await window.supabaseClient.auth.getSession();
+      const {
+        data: { session },
+        error
+      } = await window.supabaseClient.auth.getSession();
 
       if (error) {
         console.error("認証状態の確認に失敗:", error);
         return;
       }
 
-      if (data.session) {
-        // すでに認証済みなら浅い管理画面へ
+      if (!session) {
+        handleGoogleLogin();
+        return;
+      }
+
+      if (state.adminProfile?.role === "admin") {
         setView("quick-admin");
       } else {
-        // 未認証ならGoogleログインを開始
-        handleGoogleLogin();
+        console.log("管理者権限がありません");
+        setView("student");
       }
 
       return;
