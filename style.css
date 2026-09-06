@@ -257,15 +257,6 @@ textarea:focus-visible {
   background-size: contain;
 }
 
-.timetable-panel .panel-title span {
-  background-image: url("アイコン時間割.png");
-}
-
-.notice-panel .panel-title span,
-.admin-side-panel .panel-title span {
-  background-image: url("アイコンベル.png");
-}
-
 .screen--deep-admin .admin-side-panel .panel-title span {
   background-image: url("アイコン管理者.png");
 }
