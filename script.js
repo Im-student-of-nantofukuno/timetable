@@ -479,30 +479,26 @@ async function renderStudent() {
 
 
   // ========================================
-  // 今日の曜日を取得
+  // 今日の曜日を取得 先過ぎるなら警告
   // ========================================
-
-  const weekdayNames = [
-    "日",
-    "月",
-    "火",
-    "水",
-    "木",
-    "金",
-    "土"
-  ];
-
-
-  const today ="月";
-    //weekdayNames[
-      //new Date().getDay()
-    //];
-
+ 
+  const selectedDay =
+    document.getElementById("student-day").value;
 
   const todayTimetable =
-    gasData.timetable?.[today] || [];
+    gasData.timetable?.[selectedDay] || [];
+  
+  const dayNumber = {
+    "月": 1,
+    "火": 2,
+    "水": 3,
+    "木": 4,
+    "金": 5
+  };
+  const todayNumber = new Date().getDay();
+  const selectedNumber = dayNumber[selectedDay];
 
-
+ const daysAhead = (selectedNumber - todayNumber + 7) % 7;
   // ========================================
   // subjectsを検索しやすい形にする
   // ========================================
