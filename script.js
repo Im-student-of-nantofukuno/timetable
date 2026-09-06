@@ -405,6 +405,10 @@ function setView(viewName) {
 
 async function renderStudent() {
 
+  console.log("profile:", state.profile);//一時的なlog２つ
+  console.log("gasClassData:", state.data.gasClassData);
+ 
+  
   ensureValidStudentProfile();
 
   setSelectValue(
