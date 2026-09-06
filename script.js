@@ -231,6 +231,10 @@ $$("[data-view-button]").forEach((button) => {
 });
   $("#logout-button")?.addEventListener("click", handleLogout);
   $("#show-admin-profiles")?.addEventListener("click", loadAdminProfiles);
+  
+  $("#student-day")?.addEventListener("change", () => {
+    renderStudent();
+  });
     
   ["#student-grade", "#student-class", "#student-course"].forEach((selector) => {
     const element = $(selector);
@@ -479,12 +483,11 @@ async function renderStudent() {
 
 
   // ========================================
-  // 今日の曜日を取得 先過ぎるなら警告
+  // 今日の曜日を取得 2日以上先なら警告
   // ========================================
  
   const selectedDay =
-    document.getElementById("student-day").value;
-
+    document.getElementById("student-day")?.value || "月";
   const todayTimetable =
     gasData.timetable?.[selectedDay] || [];
   
@@ -498,13 +501,24 @@ async function renderStudent() {
   const todayNumber = new Date().getDay();
   const selectedNumber = dayNumber[selectedDay];
 
- const daysAhead = (selectedNumber - todayNumber + 7) % 7;
+  const daysAhead = (selectedNumber - todayNumber + 7) % 7;
+
+  const warningElement =
+    document.getElementById("student-day-warning");
+ 
+  if (warningElement) {
+    if (daysAhead >= 2) {
+      warningElement.textContent =
+        "明後日以降の時間割はこれから変わる可能性があります";
+    } else {
+      warningElement.textContent = "";
+    }
+  }
+  const subjectMap = {};
+  
   // ========================================
   // subjectsを検索しやすい形にする
   // ========================================
-
-  const subjectMap = {};
-
 
   (gasData.subjects || []).forEach(
     (subject) => {
