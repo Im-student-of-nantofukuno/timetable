@@ -405,11 +405,7 @@ function setView(viewName) {
 
 async function renderStudent() {
 
-  console.log("profile:", state.profile);//一時的なlog２つ
-  console.log("gasClassData:", state.data.gasClassData);
- 
-  
-  ensureValidStudentProfile();
+    ensureValidStudentProfile();
 
   setSelectValue(
     "#student-grade",
@@ -452,7 +448,8 @@ async function renderStudent() {
   const gasData =
     await fetchGasClassData(state.profile);
 
-
+  console.log("gasData after fetch:", gasData);//一時的なテストlog2つ
+  console.log("state.data.gasClassData:", state.data.gasClassData);
   // ========================================
   // GAS取得失敗
   // ========================================
@@ -1089,44 +1086,37 @@ function escapeHtml(value) {
 // GASからクラスのデータを取得
 // ========================================
 async function fetchGasClassData(profile) {
-
-  const params = new URLSearchParams({
-    grade: profile.grade,
-    class_no: profile.classNo,
-    course: profile.course
-  });
-
-  const url = `${GAS_API_URL}?${params.toString()}`;
-
   try {
+    const params = new URLSearchParams({
+      grade: String(profile.grade),
+      class_no: String(profile.classNo),
+      course: String(profile.course)
+    });
+
+    const url = `${GAS_API_URL}?${params.toString()}`;
+
+    console.log("GAS request URL:", url);
 
     const response = await fetch(url);
 
+    console.log("GAS response status:", response.status);
+
     if (!response.ok) {
-      throw new Error(
-        `GAS API HTTPエラー: ${response.status}`
-      );
+      throw new Error(`GAS request failed: ${response.status}`);
     }
 
     const result = await response.json();
 
-    if (!result.success) {
-      throw new Error(
-        result.error || "GAS APIでエラーが発生しました"
-      );
-    }
+    console.log("GAS response JSON:", result);
 
-    console.log("GASクラスデータ取得成功:", result);
+    if (!result.success) {
+      throw new Error(result.error || "GASからデータを取得できませんでした");
+    }
 
     return result.data;
 
   } catch (error) {
-
-    console.error(
-      "GASクラスデータ取得失敗:",
-      error
-    );
-
+    console.error("fetchGasClassData error:", error);
     return null;
   }
 }
