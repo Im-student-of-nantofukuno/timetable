@@ -3,6 +3,11 @@ if (FORCE_RESET) {
     localStorage.clear();
 }
 
+// ========================================
+// Google Apps Script API
+// ========================================
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxfwsvnTbewcHwfBvblpE9UoyqvBAqpzyBzieCTVQ9mevnpmtc_OJgJ9VeFG14FgrUh/exec";
+
 const STORAGE_KEYS = {
   profile: "timetable.profile",
   baseTimetables: "timetable.baseTimetables",
@@ -32,7 +37,8 @@ const state = {
     classCourses: {},
     changes: [],
     notifications: [],
-    managers: []
+    managers: [],
+    gasClassData: null,
   }
 };
 
@@ -397,26 +403,203 @@ function setView(viewName) {
   });
 }
 
-function renderStudent() {
+async function renderStudent() {
+
   ensureValidStudentProfile();
-  setSelectValue("#student-grade", state.profile.grade);
-  setSelectValue("#student-class", state.profile.classNo);
-  setSelectValue("#student-course", state.profile.course);
 
-  const profileControls = $("#student-profile-controls");
-  const timetablePanel = $(".timetable-panel");
-  profileControls?.setAttribute("data-course", state.profile.course);
-  timetablePanel?.setAttribute("data-course", state.profile.course);
+  setSelectValue(
+    "#student-grade",
+    state.profile.grade
+  );
 
-  const classId = getClassId(state.profile);
-  const subjects = getMergedTimetable(classId, state.adminDate);
-  const changedPeriods = getChangesForClass(classId, state.adminDate).map((change) => Number(change.period));
+  setSelectValue(
+    "#student-class",
+    state.profile.classNo
+  );
 
-  $$(".period-subject").forEach((subjectNode) => {
-    const period = Number(subjectNode.dataset.period);
-    subjectNode.textContent = subjects[period - 1] || "";
-    subjectNode.closest("li")?.classList.toggle("is-changed", changedPeriods.includes(period));
-  });
+  setSelectValue(
+    "#student-course",
+    state.profile.course
+  );
+
+
+  const profileControls =
+    $("#student-profile-controls");
+
+  const timetablePanel =
+    $(".timetable-panel");
+
+
+  profileControls?.setAttribute(
+    "data-course",
+    state.profile.course
+  );
+
+  timetablePanel?.setAttribute(
+    "data-course",
+    state.profile.course
+  );
+
+
+  // ========================================
+  // GASから現在のクラスデータを取得
+  // ========================================
+
+  const gasData =
+    await fetchGasClassData(state.profile);
+
+
+  // ========================================
+  // GAS取得失敗
+  // ========================================
+
+  if (!gasData) {
+
+    $$(".period-subject").forEach(
+      (subjectNode) => {
+
+        subjectNode.textContent = "";
+
+        subjectNode
+          .closest("li")
+          ?.classList.remove("is-changed");
+
+      }
+    );
+
+    renderStudentNotices();
+
+    return;
+  }
+
+
+  state.data.gasClassData =
+    gasData;
+
+
+  // ========================================
+  // 今日の曜日を取得
+  // ========================================
+
+  const weekdayNames = [
+    "日",
+    "月",
+    "火",
+    "水",
+    "木",
+    "金",
+    "土"
+  ];
+
+
+  const today =
+    weekdayNames[
+      new Date().getDay()
+    ];
+
+
+  const todayTimetable =
+    gasData.timetable?.[today] || [];
+
+
+  // ========================================
+  // subjectsを検索しやすい形にする
+  // ========================================
+
+  const subjectMap = {};
+
+
+  (gasData.subjects || []).forEach(
+    (subject) => {
+
+      subjectMap[subject.subject_id] =
+        subject;
+
+    }
+  );
+
+
+  // ========================================
+  // 各時限を表示
+  // ========================================
+
+  $$(".period-subject").forEach(
+    (subjectNode) => {
+
+      const period =
+        Number(subjectNode.dataset.period);
+
+
+      const timetableItem =
+        todayTimetable.find(
+          (item) =>
+            Number(item.period) === period
+        );
+
+
+      if (!timetableItem) {
+
+        subjectNode.textContent = "";
+
+        subjectNode
+          .closest("li")
+          ?.classList.remove("is-changed");
+
+        return;
+      }
+
+
+      const subjectId =
+        timetableItem.subject_id;
+
+
+      let displayName = "";
+
+
+      // ====================================
+      // jointの場合
+      // ====================================
+
+      if (timetableItem.joint) {
+
+        displayName =
+          timetableItem.joint.joint_name || "";
+
+      }
+
+      // ====================================
+      // 通常授業の場合
+      // ====================================
+
+      else {
+
+        const subject =
+          subjectMap[subjectId];
+
+        displayName =
+          subject?.subject_name || subjectId || "";
+
+      }
+
+
+      subjectNode.textContent =
+        displayName;
+
+
+      // ====================================
+      // subject_changeがあった場合
+      // ====================================
+
+      subjectNode
+        .closest("li")
+        ?.classList.toggle(
+          "is-changed",
+          Boolean(
+            timetableItem.subject_change
+          )
+        );
+    }
+  );
 
   renderStudentNotices();
 }
@@ -896,4 +1079,50 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+// ========================================
+// GASからクラスのデータを取得
+// ========================================
+async function fetchGasClassData(profile) {
+
+  const params = new URLSearchParams({
+    grade: profile.grade,
+    class_no: profile.classNo,
+    course: profile.course
+  });
+
+  const url = `${GAS_API_URL}?${params.toString()}`;
+
+  try {
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(
+        `GAS API HTTPエラー: ${response.status}`
+      );
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(
+        result.error || "GAS APIでエラーが発生しました"
+      );
+    }
+
+    console.log("GASクラスデータ取得成功:", result);
+
+    return result.data;
+
+  } catch (error) {
+
+    console.error(
+      "GASクラスデータ取得失敗:",
+      error
+    );
+
+    return null;
+  }
 }
