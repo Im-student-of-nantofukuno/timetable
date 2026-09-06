@@ -493,10 +493,10 @@ async function renderStudent() {
   ];
 
 
-  const today =
-    weekdayNames[
-      new Date().getDay()
-    ];
+  const today ="月";
+    //weekdayNames[
+      //new Date().getDay()
+    //];
 
 
   const todayTimetable =
