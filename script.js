@@ -546,29 +546,6 @@ async function renderStudent() {
   const todayTimetable =
     gasData.timetable?.[selectedDay] || [];
   
-  const dayNumber = {
-    "月": 1,
-    "火": 2,
-    "水": 3,
-    "木": 4,
-    "金": 5
-  };
-
-  const todayNumber = new Date().getDay();
-  const selectedNumber = dayNumber[selectedDay];
-
-  let daysAhead =
-    (selectedNumber - todayNumber + 7) % 7;
-
-// 土日なら、月曜日を「次の登校日」として扱う
-  if (todayNumber === 0) {
-    daysAhead = selectedNumber === 1 ? 1 : 1;
-  }
-
-  if (todayNumber === 6) {
-    daysAhead = selectedNumber === 1 ? 2 : 2;
-  }
-
   const subjectMap = {};
   
   // ========================================
