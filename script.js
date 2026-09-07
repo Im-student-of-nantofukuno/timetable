@@ -509,20 +509,39 @@ async function renderStudent() {
     "木": 4,
     "金": 5
   };
+
   const todayNumber = new Date().getDay();
   const selectedNumber = dayNumber[selectedDay];
 
-  const daysAhead = (selectedNumber - todayNumber + 7) % 7;
+  let daysAhead =
+    (selectedNumber - todayNumber + 7) % 7;
 
-  const warningElement =
-    document.getElementById("student-day-warning");
- 
-  if (warningElement) {
-    if (daysAhead >= 2) {
-      warningElement.textContent =
-        "明後日以降の時間割はこれから変わる可能性があります";
+// 土日なら、月曜日を「次の登校日」として扱う
+  if (todayNumber === 0) {
+    daysAhead = selectedNumber === 1 ? 1 : 1;
+  }
+
+  if (todayNumber === 6) {
+    daysAhead = selectedNumber === 1 ? 2 : 2;
+  }
+
+  const statusElement =
+    document.getElementById("student-day-status");
+
+  if (statusElement) {
+    statusElement.className = "";
+
+    if (daysAhead === 0) {
+      statusElement.textContent = "今日の時間割";
+      statusElement.classList.add("is-today");
+
+    } else if (daysAhead === 1) {
+      statusElement.textContent = "明日の時間割";
+      statusElement.classList.add("is-tomorrow");
+
     } else {
-      warningElement.textContent = "";
+      statusElement.textContent = "明後日以降の時間割";
+      statusElement.classList.add("is-future");
     }
   }
   const subjectMap = {};
