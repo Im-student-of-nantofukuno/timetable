@@ -525,20 +525,24 @@ async function renderStudent() {
       daysAhead = selectedNumber === 1 ? 1 : daysAhead;
     }
 
-    daySelect.classList.remove(
-      "day-is-today",
-      "day-is-tomorrow",
-      "day-is-future"
-    );
+    const dayChip = daySelect.closest(".profile-chip--day");
 
-    if (daysAhead === 0) {
-      daySelect.classList.add("day-is-today");
-    } else if (daysAhead === 1) {
-      daySelect.classList.add("day-is-tomorrow");
-    } else {
-      daySelect.classList.add("day-is-future");
+    if (dayChip) {
+      dayChip.classList.remove(
+        "day-is-today",
+        "day-is-tomorrow",
+        "day-is-future"
+      );
+
+      if (daysAhead === 0) {
+        dayChip.classList.add("day-is-today");
+      } else if (daysAhead === 1) {
+        dayChip.classList.add("day-is-tomorrow");
+      } else {
+        dayChip.classList.add("day-is-future");
+      }
     }
-  }
+      
   const todayTimetable =
     gasData.timetable?.[selectedDay] || [];
   
