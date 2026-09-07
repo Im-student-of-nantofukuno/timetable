@@ -39,6 +39,7 @@ const state = {
     notifications: [],
     managers: [],
     gasClassData: null,
+    gasClassDataProfileKey: null,
   }
 };
 
@@ -451,11 +452,12 @@ async function renderStudent() {
 
   const cachedData = state.data.gasClassData;
 
+  const profileKey =
+    `${state.profile.grade}-${state.profile.classNo}-${state.profile.course}`;
+
   const isSameProfile =
-    cachedData?.class &&
-    String(cachedData.class.grade) === String(state.profile.grade) &&
-    String(cachedData.class.class_no) === String(state.profile.classNo) &&
-    String(cachedData.class.course) === String(state.profile.course);
+    cachedData &&
+    state.data.gasClassDataProfileKey === profileKey;
 
   const gasData = isSameProfile
     ? cachedData
@@ -486,11 +488,11 @@ async function renderStudent() {
     return;
   }
 
-
   state.data.gasClassData =
     gasData;
-
-
+  
+  state.data.gasClassDataProfileKey =
+    profileKey;
   // ========================================
   // 今日の曜日を取得 2日以上先なら警告
   // ========================================
