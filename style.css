@@ -926,3 +926,18 @@ button.matrix-cell:hover {
     font-size: 2rem;
   }
 }
+
+#student-day.day-is-today {
+  background: #dff3df;
+  border: 3px solid #267326;
+}
+
+#student-day.day-is-tomorrow {
+  background: #dfeeff;
+  border: 3px solid #285a9e;
+}
+
+#student-day.day-is-future {
+  background: #fff0d9;
+  border: 3px solid #9a5b00;
+}
