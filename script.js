@@ -525,25 +525,6 @@ async function renderStudent() {
     daysAhead = selectedNumber === 1 ? 2 : 2;
   }
 
-  const statusElement =
-    document.getElementById("student-day-status");
-
-  if (statusElement) {
-    statusElement.className = "";
-
-    if (daysAhead === 0) {
-      statusElement.textContent = "今日の時間割";
-      statusElement.classList.add("is-today");
-
-    } else if (daysAhead === 1) {
-      statusElement.textContent = "明日の時間割";
-      statusElement.classList.add("is-tomorrow");
-
-    } else {
-      statusElement.textContent = "明後日以降の時間割";
-      statusElement.classList.add("is-future");
-    }
-  }
   const subjectMap = {};
   
   // ========================================
