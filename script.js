@@ -449,10 +449,19 @@ async function renderStudent() {
   // GASから現在のクラスデータを取得
   // ========================================
 
-  const gasData =
-    await fetchGasClassData(state.profile);
+  const cachedData = state.data.gasClassData;
 
-  console.log("gasData after fetch:", gasData);//一時的なテストlog2つ
+  const isSameProfile =
+    cachedData?.class &&
+    String(cachedData.class.grade) === String(state.profile.grade) &&
+    String(cachedData.class.class_no) === String(state.profile.classNo) &&
+    String(cachedData.class.course) === String(state.profile.course);
+
+  const gasData = isSameProfile
+    ? cachedData
+    : await fetchGasClassData(state.profile);
+
+  console.log("gasData:", gasData);
   console.log("state.data.gasClassData:", state.data.gasClassData);
   // ========================================
   // GAS取得失敗
