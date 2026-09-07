@@ -224,6 +224,31 @@ textarea:focus-visible {
   align-items: stretch;
 }
 
+#student-day-status {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+/* 曜日が今日 */
+#student-day-status.is-today {
+  background: #dff3df;
+  color: #267326;
+}
+/* 明日 */
+#student-day-status.is-tomorrow {
+  background: #dfeeff;
+  color: #285a9e;
+}
+/* 明後日以降 */
+#student-day-status.is-future {
+  background: #fff0d9;
+  color: #9a5b00;
+}
+
 .timetable-panel,
 .notice-panel,
 .matrix-panel,
