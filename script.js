@@ -542,7 +542,8 @@ async function renderStudent() {
         dayChip.classList.add("day-is-future");
       }
     }
-      
+
+  }
   const todayTimetable =
     gasData.timetable?.[selectedDay] || [];
   
