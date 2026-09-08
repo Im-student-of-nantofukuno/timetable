@@ -232,7 +232,28 @@ $$("[data-view-button]").forEach((button) => {
 });
   $("#logout-button")?.addEventListener("click", handleLogout);
   $("#show-admin-profiles")?.addEventListener("click", loadAdminProfiles);
-  
+
+  const studentDaySelect = $("#student-day");
+
+  if (studentDaySelect) {
+    const dayNames = [
+      "日",
+      "月",
+      "火",
+      "水",
+      "木",
+      "金",
+      "土"
+    ];
+
+    const today = new Date();
+    const todayName = dayNames[today.getDay()];
+
+    if (["月", "火", "水", "木", "金"].includes(todayName)) {
+      studentDaySelect.value = todayName;
+    }
+  }
+    
   $("#student-day")?.addEventListener("change", () => {
     renderStudent();
   });
