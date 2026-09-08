@@ -928,15 +928,16 @@ button.matrix-cell:hover {
 }
 
 .profile-chip--day.day-is-today {
-  background: #dff3df;
+  background: #cfe8cf;
 }
 
 .profile-chip--day.day-is-tomorrow {
-  background: #dfeeff;
+  background: #c9ddf5;
 }
 
 .profile-chip--day.day-is-future {
-  background: #fff0d9;
+  background: #ffd27f;
+  box-shadow: 0 0 0 3px #e89b00;
 }
 
 .profile-chip--day {
