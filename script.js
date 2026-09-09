@@ -780,20 +780,20 @@ async function renderQuickAdmin() {
             Number(period)
         );
 
-      const subjectId =
-        timetableItem?.subject_id || "";
+      const changeSubjectId =
+        timetableItem?.subject_change || "";
 
       const displayName =
-        getGasAdminSubjectDisplayName(
-          gasData,
-          subjectId,
-          timetableItem
-        );
+        changeSubjectId
+          ? getGasAdminSubjectDisplayName(
+              gasData,
+              changeSubjectId,
+              timetableItem
+            )
+          : "";
 
       const isChanged =
-        Boolean(
-          timetableItem?.subject_change
-        );
+        Boolean(changeSubjectId);
 
       const cell =
         createCell(
