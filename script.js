@@ -206,12 +206,13 @@ $$("[data-view-button]").forEach((button) => {
         return;
       }
 
-      if (state.adminProfile?.role === "admin") {
-        setView("quick-admin");
-      } else {
-        console.log("管理者権限がありません");
-        setView("student");
-      }
+     if (state.adminProfile?.role === "admin") {
+       setView("quick-admin");
+       renderQuickAdmin();
+    } else {
+      console.log("管理者権限がありません");
+      setView("student");
+    }
 
       return;
     }
