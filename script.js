@@ -28,7 +28,7 @@ const state = {
     classNo: "4",
     course: "humanities"
   },
-  adminDate: new Date().toISOString().slice(0, 10),
+  adminDay: "月",
   data: {
     periods: [],
     courses: {},
@@ -274,17 +274,12 @@ $$("[data-view-button]").forEach((button) => {
   });
 
   $("#admin-grade")?.addEventListener("change", renderQuickAdmin);
-  $("#deep-admin-grade")?.addEventListener("change", renderDeepAdmin);
-
-  $$(".admin-header input").forEach((input) => {
-    input.addEventListener("change", () => {
-      const month = Number($(".admin-header input[name='month']")?.value || 1);
-      const day = Number($(".admin-header input[name='day']")?.value || 1);
-      const year = new Date().getFullYear();
-      state.adminDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      renderQuickAdmin();
-    });
+  $("#admin-day")?.addEventListener("change", () => {
+    state.adminDay = $("#admin-day").value;
+    renderQuickAdmin();
   });
+
+  $("#deep-admin-grade")?.addEventListener("change", renderDeepAdmin);
 
   $$(".segmented-control [data-admin-mode]").forEach((button) => {
     button.addEventListener("click", () => {
