@@ -226,7 +226,15 @@ $$("[data-view-button]").forEach((button) => {
         state.adminProfile?.role === "admin"
       ) {
         setView(targetView);
-        renderQuickAdmin();
+
+        if (targetView === "quick-admin") {
+          renderQuickAdmin();
+        }
+
+        if (targetView === "deep-admin") {
+          renderDeepAdmin();
+        }
+
       } else if (!state.authenticated) {
         handleGoogleLogin();
       } else {
