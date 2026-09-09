@@ -39,7 +39,6 @@ const state = {
     notifications: [],
     managers: [],
     gasClassDataCache: {},
-    gasClassDataCache: {},
     gasAdminTimetableCache: {},
   }
 };
@@ -218,12 +217,22 @@ $$("[data-view-button]").forEach((button) => {
     }
 
     // 浅い管理画面・詳細管理画面
-    if (targetView === "quick-admin" || targetView === "deep-admin") {
-      if (state.authenticated) {
+    if (
+      targetView === "quick-admin" ||
+      targetView === "deep-admin"
+    ) {
+      if (
+        state.authenticated &&
+        state.adminProfile?.role === "admin"
+      ) {
         setView(targetView);
-      } else {
+      } else if (!state.authenticated) {
         handleGoogleLogin();
+      } else {
+        alert("管理者権限がありません。");
+        setView("student");
       }
+
       return;
     }
 
@@ -678,34 +687,134 @@ function renderStudentNotices() {
   });
 }
 
-function renderQuickAdmin() {
-  const grade = $("#admin-grade")?.value || "2";
-  const classes = getClassesByGrade(grade);
-  const matrix = $("#change-matrix");
+async function renderQuickAdmin() {
+  // 浅い管理画面を表示している管理者以外ではGASを呼ばない
+  if (
+    state.view !== "quick-admin" ||
+    !state.authenticated ||
+    state.adminProfile?.role !== "admin"
+  ) {
+    return;
+  }
+
+  const grade =
+    $("#admin-grade")?.value || "2";
+
+  const matrix =
+    $("#change-matrix");
+
   if (!matrix) return;
 
-  matrix.style.setProperty("--class-count", classes.length);
+  // 学年単位のGASデータを取得
+  const gasData =
+    await fetchGasAdminTimetable(grade);
+
+  if (!gasData) {
+    matrix.replaceChildren(
+      createEmptyState(
+        "時間割を取得できませんでした。"
+      )
+    );
+    return;
+  }
+
+  // GASから取得したクラス一覧を使用
+  const classes =
+    gasData.classes || [];
+
+  matrix.style.setProperty(
+    "--class-count",
+    classes.length
+  );
+
   matrix.replaceChildren();
-  appendMatrixHeader(matrix, classes);
 
+  // ヘッダー
+  appendMatrixHeader(
+    matrix,
+    classes.map(convertGasClassForDisplay)
+  );
+
+  // 現在選択されている曜日
+  const day =
+    state.adminDay || "月";
+
+  // GASの曜日データ
+  const dayData =
+    gasData.timetable?.[day] || {};
+
+  // 1～7限
   state.data.periods.forEach((period) => {
-    matrix.append(createCell(`${period}限`, "div", "matrix-cell matrix-cell--period"));
+    matrix.append(
+      createCell(
+        `${period}限`,
+        "div",
+        "matrix-cell matrix-cell--period"
+      )
+    );
 
-    classes.forEach((classItem) => {
-      const change = findChange(classItem.id, period, state.adminDate);
-      const cell = createCell(
-        change?.subject || "",
-        "button",
-        `matrix-cell ${getSubjectClass(classItem.course)}${change ? " is-changed" : ""}`
-      );
+    classes.forEach((gasClass) => {
+      const classId =
+        String(gasClass.class_id);
+
+      const classItem =
+        convertGasClassForDisplay(gasClass);
+
+      const timetable =
+        dayData[classId] || [];
+
+      const timetableItem =
+        timetable.find(
+          (item) =>
+            Number(item.period) ===
+            Number(period)
+        );
+
+      const subjectId =
+        timetableItem?.subject_id || "";
+
+      const displayName =
+        getGasAdminSubjectDisplayName(
+          gasData,
+          subjectId,
+          timetableItem
+        );
+
+      const isChanged =
+        Boolean(
+          timetableItem?.subject_change
+        );
+
+      const cell =
+        createCell(
+          displayName,
+          "button",
+          `matrix-cell ${
+            getSubjectClass(classItem.course)
+          }${isChanged ? " is-changed" : ""}`
+        );
+
       cell.type = "button";
-      cell.dataset.classId = classItem.id;
-      cell.dataset.period = String(period);
-      cell.addEventListener("click", () => editChange(classItem, period, change));
+
+      cell.dataset.classId =
+        classId;
+
+      cell.dataset.period =
+        String(period);
+
+      cell.addEventListener(
+        "click",
+        () => {
+          editChange(
+            classItem,
+            period,
+            null
+          );
+        }
+      );
       matrix.append(cell);
     });
   });
-
   renderAdminPosts();
 }
 
@@ -1164,4 +1273,147 @@ async function fetchGasClassData(profile) {
     console.error("fetchGasClassData error:", error);
     return null;
   }
+}
+
+// ========================================
+// GASから浅い管理画面用の時間割を取得
+// 学年単位で月～金をまとめて取得
+// ========================================
+async function fetchGasAdminTimetable(grade) {
+  const cacheKey =
+    String(grade);
+
+  // ブラウザ側キャッシュ
+  const cached =
+    state.data.gasAdminTimetableCache[
+      cacheKey
+    ];
+
+  if (cached) {
+    console.log(
+      "浅い管理画面：ブラウザキャッシュ使用:",
+      cacheKey
+    );
+
+    return cached;
+  }
+
+  try {
+    const params =
+      new URLSearchParams({
+        admin: "quick",
+        grade: String(grade)
+      });
+
+    const url =
+      `${GAS_API_URL}?${params.toString()}`;
+
+    console.log(
+      "浅い管理画面GAS request:",
+      url
+    );
+
+    const response =
+      await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(
+        `GAS request failed: ${response.status}`
+      );
+    }
+
+    const result =
+      await response.json();
+
+    console.log(
+      "浅い管理画面GAS response:",
+      result
+    );
+
+    if (!result.success) {
+      throw new Error(
+        result.error ||
+        "GASから時間割を取得できませんでした"
+      );
+    }
+
+    // 学年単位でキャッシュ
+    state.data.gasAdminTimetableCache[
+      cacheKey
+    ] = result.data;
+
+    return result.data;
+
+  } catch (error) {
+    console.error(
+      "fetchGasAdminTimetable error:",
+      error
+    );
+
+    return null;
+  }
+}
+
+// ========================================
+// GASのclass情報を画面表示用に変換
+// ========================================
+function convertGasClassForDisplay(gasClass) {
+  const courseMap = {
+    "": "none",
+    "文系": "humanities",
+    "理系": "science",
+    "探文": "explore-humanities",
+    "探理": "explore-science",
+    "農": "agriculture",
+    "福": "welfare"
+  };
+
+  const course =
+    courseMap[
+      String(gasClass.course || "").trim()
+    ] || "none";
+
+  return {
+    id: String(gasClass.class_id),
+    grade: String(gasClass.grade),
+    classNo: String(gasClass.class_no),
+    course,
+    label:
+      `${gasClass.grade}${gasClass.class_no}H`
+  };
+}
+
+// ========================================
+// GASのsubject_idから表示名を取得
+// jointにも対応
+// ========================================
+function getGasAdminSubjectDisplayName(
+  gasData,
+  subjectId,
+  timetableItem
+) {
+  if (!subjectId) {
+    return "";
+  }
+
+  // joint授業
+  if (timetableItem?.joint) {
+    return (
+      timetableItem.joint.joint_name ||
+      subjectId
+    );
+  }
+
+  // 通常授業
+  const subject =
+    (gasData.subjects || []).find(
+      (item) =>
+        String(item.subject_id) ===
+        String(subjectId)
+    );
+
+  return (
+    subject?.subject_name ||
+    subjectId
+  );
 }
