@@ -38,8 +38,7 @@ const state = {
     changes: [],
     notifications: [],
     managers: [],
-    gasClassData: null,
-    gasClassDataProfileKey: null,
+    gasClassDataCache: {},
   }
 };
 
@@ -457,18 +456,14 @@ async function renderStudent() {
   // GASから現在のクラスデータを取得
   // ========================================
 
-  const cachedData = state.data.gasClassData;
-
   const profileKey =
     `${state.profile.grade}-${state.profile.classNo}-${state.profile.course}`;
 
-  const isSameProfile =
-    cachedData &&
-    state.data.gasClassDataProfileKey === profileKey;
+  const cachedData =
+    state.data.gasClassDataCache[profileKey];
 
-  const gasData = isSameProfile
-    ? cachedData
-    : await fetchGasClassData(state.profile);
+  const gasData = cachedData
+    || await fetchGasClassData(state.profile);
 
   console.log("gasData:", gasData);
   console.log("state.data.gasClassData:", state.data.gasClassData);
@@ -495,11 +490,9 @@ async function renderStudent() {
     return;
   }
 
-  state.data.gasClassData =
-    gasData;
-  
-  state.data.gasClassDataProfileKey =
-    profileKey;
+  if (!cachedData) {
+    state.data.gasClassDataCache[profileKey] = gasData;
+  }
   // ========================================
   // 今日の曜日を取得 2日以上先なら警告
   // ========================================
