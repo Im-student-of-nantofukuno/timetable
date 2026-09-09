@@ -53,7 +53,6 @@ async function init() {
   bindEvents();
   await setupAuth();
   restoreProfile();
-  syncDateInputs();
   updateTargetSummary();
   renderAll();
 }
@@ -383,14 +382,6 @@ function restoreProfile() {
   setSelectValue("#student-class", state.profile.classNo);
   setSelectValue("#student-course", state.profile.course);
   ensureValidStudentProfile();
-}
-
-function syncDateInputs() {
-  const [, month, day] = state.adminDate.split("-");
-  const monthInput = $(".admin-header input[name='month']");
-  const dayInput = $(".admin-header input[name='day']");
-  if (monthInput) monthInput.value = String(Number(month));
-  if (dayInput) dayInput.value = String(Number(day));
 }
 
 function renderAll() {
