@@ -39,6 +39,8 @@ const state = {
     notifications: [],
     managers: [],
     gasClassDataCache: {},
+    gasClassDataCache: {},
+    gasAdminTimetableCache: {},
   }
 };
 
