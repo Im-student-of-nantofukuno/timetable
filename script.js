@@ -917,31 +917,100 @@ function appendMatrixHeader(matrix, classes, editableCourses = false) {
   });
 }
 
-function editChange(classItem, period, existingChange) {
-  const current = existingChange?.subject || "";
-  const subject = prompt(`${classItem.label} ${state.data.courses[classItem.course]} ${period}限の変更`, current);
+async function editChange(classItem, period, existingChange) {
+  const current =
+    existingChange?.subject_change ||
+    existingChange?.subject ||
+    "";
+
+  const subject = prompt(
+    `${classItem.label} ${state.data.courses[classItem.course] || ""} ${period}限の変更\n科目IDを入力してください`,
+    current
+  );
+
   if (subject === null) return;
 
-  const trimmed = subject.trim();
-  state.data.changes = state.data.changes.filter((change) => {
-    return !(change.date === state.adminDate && change.classId === classItem.id && Number(change.period) === period);
-  });
+  const subjectChange = subject.trim();
 
-  if (trimmed) {
-    state.data.changes.push({
-      id: `change-${Date.now()}`,
-      date: state.adminDate,
-      classId: classItem.id,
-      period,
-      subject: trimmed,
-      note: "画面から追加"
-    });
-    addChangeHistory(classItem, period, trimmed);
+  // 現在のログインセッションを取得
+  const {
+    data: { session },
+    error: sessionError
+  } = await window.supabaseClient.auth.getSession();
+
+  if (sessionError) {
+    console.error("認証状態の取得に失敗:", sessionError);
+    alert("ログイン状態の確認に失敗しました。");
+    return;
   }
 
-  saveStored(STORAGE_KEYS.changes, state.data.changes);
-  renderQuickAdmin();
-  renderStudent();
+  if (!session) {
+    alert("ログインしてください。");
+    return;
+  }
+
+  const day = state.adminDay || "月";
+
+  try {
+    const response = await fetch("/api/timetable-change", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        action: "updateTimetableChange",
+        classId: classItem.id,
+        grade: classItem.grade,
+        day,
+        period,
+        subjectChange,
+        teacherChange: ""
+      })
+    });
+
+    const result = await response.json();
+
+    console.log("時間割変更結果:", result);
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.error || "時間割変更に失敗しました"
+      );
+    }
+
+    // ブラウザ側のGASキャッシュを削除
+    delete state.data.gasAdminTimetableCache[
+      String(classItem.grade)
+    ];
+
+    // 学生側のクラスデータキャッシュも削除
+    const profileKey =
+      `${classItem.grade}-${classItem.classNo}-${classItem.course}`;
+
+    delete state.data.gasClassDataCache[profileKey];
+
+    alert(
+      `${day}曜日 ${period}限を「${subjectChange}」に変更しました。`
+    );
+
+    // 最新データをGASから再取得
+    await renderQuickAdmin();
+
+    // 学生画面側も最新状態にする
+    await renderStudent();
+
+  } catch (error) {
+    console.error(
+      "時間割変更エラー:",
+      error
+    );
+
+    alert(
+      "時間割の変更に失敗しました。\n\n" +
+      error.message
+    );
+  }
 }
 
 function editClassCourse(classItem) {
