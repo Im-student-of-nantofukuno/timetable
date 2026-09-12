@@ -1326,30 +1326,51 @@ async function fetchGasClassData(profile) {
       course: String(profile.course)
     });
 
-    const url = `${GAS_API_URL}?${params.toString()}`;
+    const url =
+      `/api/timetable?${params.toString()}`;
 
-    console.log("GAS request URL:", url);
+    console.log(
+      "時間割取得URL:",
+      url
+    );
 
-    const response = await fetch(url);
+    const response =
+      await fetch(url);
 
-    console.log("GAS response status:", response.status);
+    console.log(
+      "時間割取得status:",
+      response.status
+    );
 
     if (!response.ok) {
-      throw new Error(`GAS request failed: ${response.status}`);
+      throw new Error(
+        `時間割取得に失敗しました: ${response.status}`
+      );
     }
 
-    const result = await response.json();
+    const result =
+      await response.json();
 
-    console.log("GAS response JSON:", result);
+    console.log(
+      "時間割取得JSON:",
+      result
+    );
 
     if (!result.success) {
-      throw new Error(result.error || "GASからデータを取得できませんでした");
+      throw new Error(
+        result.error ||
+        "GASからデータを取得できませんでした"
+      );
     }
 
     return result.data;
 
   } catch (error) {
-    console.error("fetchGasClassData error:", error);
+    console.error(
+      "fetchGasClassData error:",
+      error
+    );
+
     return null;
   }
 }
