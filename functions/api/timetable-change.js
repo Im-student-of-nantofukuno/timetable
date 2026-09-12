@@ -120,9 +120,18 @@ export async function onRequestPost(context) {
     try {
       gasData = JSON.parse(gasText);
     } catch (error) {
+      console.error("GAS response status:", gasResponse.status);
+      console.error("GAS response URL:", gasResponse.url);
+      console.error("GAS response content-type:", gasResponse.headers.get("content-type"));
+      console.error("GAS response text:", gasText);
+
       gasData = {
         success: false,
-        error: "GASからJSONではない応答が返されました"
+        error:
+          "GASからJSONではない応答が返されました。\n" +
+          "HTTP: " + gasResponse.status +
+          "\nContent-Type: " +
+          gasResponse.headers.get("content-type")
       };
     }
 
