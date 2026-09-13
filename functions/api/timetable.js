@@ -3,7 +3,7 @@ export async function onRequestGet(context) {
     const env = context.env;
     const requestUrl = new URL(context.request.url);
 
-    // ブラウザから送られたGETパラメータを取得
+    // ブラウザから送られたGETパラメータを取得 
     const params = requestUrl.searchParams;
     
     // GASへそのまま転送するURLを作る
