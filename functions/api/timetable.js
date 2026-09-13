@@ -17,7 +17,6 @@ export async function onRequestGet(context) {
 
     // Cloudflare側からGASへアクセス
     const gasResponse = await fetch(gasUrl.toString());
-
     const gasText = await gasResponse.text();
 
     console.log("GAS GET status:", gasResponse.status);
@@ -25,6 +24,8 @@ export async function onRequestGet(context) {
       "GAS GET content-type:",
       gasResponse.headers.get("content-type")
     );
+    console.log("GAS GET final URL:", gasResponse.url);
+    console.log("GAS GET redirected:", gasResponse.redirected);
 
     let gasData;
 
