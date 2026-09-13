@@ -1406,7 +1406,7 @@ async function fetchGasAdminTimetable(grade) {
       });
 
     const url =
-      `${GAS_API_URL}?${params.toString()}`;
+        `/api/timetable?${params.toString()}`;;
 
     console.log(
       "浅い管理画面GAS request:",
