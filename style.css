@@ -1112,3 +1112,31 @@ button.matrix-cell:hover {
 .subject-selection-cancel:hover {
   background: #f2f2f2;
 }
+
+.subject-selection-clear {
+  display: block;
+
+  width: 100%;
+
+  padding: 11px 12px;
+
+  margin-bottom: 6px;
+
+  border: none;
+
+  border-bottom: 1px solid #dddddd;
+
+  background: #f5f5f5;
+
+  text-align: left;
+
+  font-size: 0.95rem;
+
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.subject-selection-clear:hover {
+  background: #e9e9e9;
+}
