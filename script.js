@@ -40,6 +40,7 @@ const state = {
     managers: [],
     gasClassDataCache: {},
     gasAdminTimetableCache: {},
+    gasAllSubjectsCache: null,
   }
 };
 
@@ -923,14 +924,49 @@ async function editChange(classItem, period, existingChange) {
     existingChange?.subject ||
     "";
 
-  const subject = prompt(
-    `${classItem.label} ${state.data.courses[classItem.course] || ""} ${period}限の変更\n科目IDを入力してください`,
-    current
-  );
+  // ========================================
+  // 全学年の科目一覧を取得
+  // ========================================
+  const allSubjects =
+    await fetchAllGasSubjects();
 
-  if (subject === null) return;
+  if (!allSubjects) {
+    alert(
+      "科目一覧を取得できませんでした。\n" +
+      "時間割データを確認してください。"
+    );
+    return;
+  }
 
-  const subjectChange = subject.trim();
+  // ========================================
+  // 科目を検索・選択
+  // ========================================
+  const subjectChange =
+    await showSubjectSelectionDialog(
+      allSubjects,
+      current
+    );
+
+  if (subjectChange === null) {
+    return;
+  }
+
+  // ========================================
+  // 保存直前のsubject_id存在チェック
+  // ========================================
+  const validSubject =
+    allSubjects.some(
+      (subject) =>
+        String(subject.subject_id).trim() ===
+        subjectChange
+    );
+
+  if (!validSubject) {
+    alert(
+      `存在しないsubject_idです。\n\n${subjectChange}`
+    );
+    return;
+  }
 
   // 現在のログインセッションを取得
   const {
@@ -1453,7 +1489,227 @@ async function fetchGasAdminTimetable(grade) {
     return null;
   }
 }
+// ========================================
+// 全学年のsubject_idを取得
+// ========================================
+async function fetchAllGasSubjects() {
+  // すでに取得済みなら再利用
+  if (state.data.gasAllSubjectsCache) {
+    return state.data.gasAllSubjectsCache;
+  }
 
+  const subjectMap = new Map();
+
+  try {
+    for (const grade of ["1", "2", "3"]) {
+      const gasData =
+        await fetchGasAdminTimetable(grade);
+
+      if (!gasData) {
+        throw new Error(
+          `${grade}年の時間割データを取得できませんでした`
+        );
+      }
+
+      (gasData.subjects || []).forEach((subject) => {
+        const subjectId =
+          String(subject.subject_id || "").trim();
+
+        if (!subjectId) return;
+
+        if (!subjectMap.has(subjectId)) {
+          subjectMap.set(subjectId, {
+            subject_id: subjectId,
+            subject_name:
+              String(subject.subject_name || "").trim()
+          });
+        }
+      });
+    }
+
+    const subjects =
+      Array.from(subjectMap.values())
+        .sort((a, b) =>
+          a.subject_id.localeCompare(
+            b.subject_id
+          )
+        );
+
+    state.data.gasAllSubjectsCache =
+      subjects;
+
+    console.log(
+      "全学年subject一覧:",
+      subjects
+    );
+
+    return subjects;
+
+  } catch (error) {
+    console.error(
+      "全学年subject一覧取得失敗:",
+      error
+    );
+
+    return null;
+  }
+}
+
+// ========================================
+// 科目ID選択ダイアログ
+// ========================================
+async function showSubjectSelectionDialog(
+  subjects,
+  currentValue = ""
+) {
+  return new Promise((resolve) => {
+    const overlay =
+      document.createElement("div");
+
+    overlay.className =
+      "subject-selection-overlay";
+
+    const dialog =
+      document.createElement("div");
+
+    dialog.className =
+      "subject-selection-dialog";
+
+    const title =
+      document.createElement("h3");
+
+    title.textContent =
+      "変更後の科目を選択";
+
+    const description =
+      document.createElement("p");
+
+    description.textContent =
+      "科目IDまたは科目名で検索できます。";
+
+    const input =
+      document.createElement("input");
+
+    input.type = "search";
+    input.placeholder =
+      "科目ID・科目名を入力";
+    input.value = currentValue;
+
+    const list =
+      document.createElement("div");
+
+    list.className =
+      "subject-selection-list";
+
+    const cancelButton =
+      document.createElement("button");
+
+    cancelButton.type = "button";
+    cancelButton.textContent =
+      "キャンセル";
+
+    function close(value) {
+      overlay.remove();
+      resolve(value);
+    }
+
+    function renderList() {
+      const keyword =
+        input.value.trim().toLowerCase();
+
+      list.replaceChildren();
+
+      const filtered =
+        subjects.filter((subject) => {
+          const id =
+            String(
+              subject.subject_id || ""
+            ).toLowerCase();
+
+          const name =
+            String(
+              subject.subject_name || ""
+            ).toLowerCase();
+
+          return (
+            !keyword ||
+            id.includes(keyword) ||
+            name.includes(keyword)
+          );
+        });
+
+      if (!filtered.length) {
+        const empty =
+          document.createElement("p");
+
+        empty.textContent =
+          "該当する科目がありません。";
+
+        list.append(empty);
+        return;
+      }
+
+      filtered.forEach((subject) => {
+        const button =
+          document.createElement("button");
+
+        button.type = "button";
+
+        button.className =
+          "subject-selection-item";
+
+        button.textContent =
+          `${subject.subject_id}　${subject.subject_name}`;
+
+        button.addEventListener(
+          "click",
+          () => {
+            close(subject.subject_id);
+          }
+        );
+
+        list.append(button);
+      });
+    }
+
+    input.addEventListener(
+      "input",
+      renderList
+    );
+
+    cancelButton.addEventListener(
+      "click",
+      () => close(null)
+    );
+
+    overlay.addEventListener(
+      "click",
+      (event) => {
+        if (event.target === overlay) {
+          close(null);
+        }
+      }
+    );
+
+    dialog.append(
+      title,
+      description,
+      input,
+      list,
+      cancelButton
+    );
+
+    overlay.append(dialog);
+    document.body.append(overlay);
+
+    renderList();
+
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  });
+}
 // ========================================
 // GASのclass情報を画面表示用に変換
 // ========================================
