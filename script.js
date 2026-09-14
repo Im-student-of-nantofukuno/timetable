@@ -1548,96 +1548,167 @@ async function fetchAllGasSubjects() {
 // ========================================
 async function showSubjectSelectionDialog(
   subjects,
-  currentValue = ""
+  currentValue
 ) {
   return new Promise((resolve) => {
+
+    // ========================================
+    // 背景
+    // ========================================
     const overlay =
       document.createElement("div");
 
     overlay.className =
       "subject-selection-overlay";
 
+
+    // ========================================
+    // ダイアログ本体
+    // ========================================
     const dialog =
       document.createElement("div");
 
     dialog.className =
       "subject-selection-dialog";
 
+
+    // ========================================
+    // タイトル
+    // ========================================
     const title =
       document.createElement("h3");
 
     title.textContent =
-      "変更後の科目を選択";
+      "変更する科目を選択";
 
-    const description =
-      document.createElement("p");
+    dialog.appendChild(title);
 
-    description.textContent =
-      "科目IDまたは科目名で検索できます。";
 
-    const input =
+    // ========================================
+    // 検索欄
+    // ========================================
+    const search =
       document.createElement("input");
 
-    input.type = "search";
-    input.placeholder =
-      "科目ID・科目名を入力";
-    input.value = currentValue;
+    search.type = "search";
+    search.placeholder =
+      "科目ID・科目名で検索";
 
+    search.value =
+      currentValue || "";
+
+    search.className =
+      "subject-selection-search";
+
+    dialog.appendChild(search);
+
+
+    // ========================================
+    // 科目一覧
+    // ========================================
     const list =
       document.createElement("div");
 
     list.className =
       "subject-selection-list";
 
-    const cancelButton =
+    dialog.appendChild(list);
+
+
+    // ========================================
+    // キャンセル
+    // ========================================
+    const cancel =
       document.createElement("button");
 
-    cancelButton.type = "button";
-    cancelButton.textContent =
-      "キャンセル";
+    cancel.type = "button";
+    cancel.textContent = "キャンセル";
 
-    function close(value) {
-      overlay.remove();
-      resolve(value);
-    }
+    cancel.className =
+      "subject-selection-cancel";
 
+    dialog.appendChild(cancel);
+
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+
+    // ========================================
+    // 一覧を表示
+    // ========================================
     function renderList() {
-      const keyword =
-        input.value.trim().toLowerCase();
 
-      list.replaceChildren();
+      const keyword =
+        search.value
+          .trim()
+          .toLowerCase();
+
+      list.innerHTML = "";
 
       const filtered =
         subjects.filter((subject) => {
-          const id =
+
+          const subjectId =
             String(
               subject.subject_id || ""
-            ).toLowerCase();
+            ).trim();
 
-          const name =
+          const subjectName =
             String(
               subject.subject_name || ""
-            ).toLowerCase();
+            ).trim();
+
+          if (!keyword) {
+            return true;
+          }
 
           return (
-            !keyword ||
-            id.includes(keyword) ||
-            name.includes(keyword)
+            subjectId
+              .toLowerCase()
+              .includes(keyword) ||
+            subjectName
+              .toLowerCase()
+              .includes(keyword)
           );
         });
 
-      if (!filtered.length) {
+
+      // ======================================
+      // 該当なし
+      // ======================================
+      if (filtered.length === 0) {
+
         const empty =
-          document.createElement("p");
+          document.createElement("div");
+
+        empty.className =
+          "subject-selection-empty";
 
         empty.textContent =
-          "該当する科目がありません。";
+          "該当する科目がありません";
 
-        list.append(empty);
+        list.appendChild(empty);
+
         return;
       }
 
+
+      // ======================================
+      // 科目ボタン
+      // ======================================
       filtered.forEach((subject) => {
+
+        const subjectId =
+          String(
+            subject.subject_id || ""
+          ).trim();
+
+        const subjectName =
+          String(
+            subject.subject_name || ""
+          ).trim();
+
         const button =
           document.createElement("button");
 
@@ -1646,56 +1717,90 @@ async function showSubjectSelectionDialog(
         button.className =
           "subject-selection-item";
 
+        // 「科目ID : 科目名」の形式
         button.textContent =
-          `${subject.subject_id}　${subject.subject_name}`;
+          `${subjectId} : ${subjectName}`;
 
         button.addEventListener(
           "click",
           () => {
-            close(subject.subject_id);
+
+            overlay.remove();
+
+            resolve(subjectId);
           }
         );
 
-        list.append(button);
+        list.appendChild(button);
       });
     }
 
-    input.addEventListener(
+
+    // ========================================
+    // イベント
+    // ========================================
+    search.addEventListener(
       "input",
       renderList
     );
 
-    cancelButton.addEventListener(
+
+    cancel.addEventListener(
       "click",
-      () => close(null)
+      () => {
+
+        overlay.remove();
+
+        resolve(null);
+      }
     );
 
+
+    // 背景クリックでキャンセル
     overlay.addEventListener(
       "click",
       (event) => {
+
         if (event.target === overlay) {
-          close(null);
+
+          overlay.remove();
+
+          resolve(null);
         }
       }
     );
 
-    dialog.append(
-      title,
-      description,
-      input,
-      list,
-      cancelButton
+
+    // ESCキーでキャンセル
+    function handleKeydown(event) {
+
+      if (event.key === "Escape") {
+
+        overlay.remove();
+
+        document.removeEventListener(
+          "keydown",
+          handleKeydown
+        );
+
+        resolve(null);
+      }
+    }
+
+    document.addEventListener(
+      "keydown",
+      handleKeydown
     );
 
-    overlay.append(dialog);
-    document.body.append(overlay);
 
+    // 初期表示
     renderList();
 
-    requestAnimationFrame(() => {
-      input.focus();
-      input.select();
-    });
+    // 検索欄にフォーカス
+    setTimeout(() => {
+      search.focus();
+      search.select();
+    }, 0);
   });
 }
 // ========================================
