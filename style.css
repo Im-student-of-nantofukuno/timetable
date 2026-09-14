@@ -961,3 +961,154 @@ button.matrix-cell:hover {
   text-align: center;
   cursor: pointer;
 }
+
+/* ========================================
+   科目選択ダイアログ
+   ======================================== */
+
+.subject-selection-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.45);
+
+  padding: 20px;
+
+  box-sizing: border-box;
+}
+
+
+.subject-selection-dialog {
+  width: min(600px, 100%);
+
+  max-height: 80vh;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #ffffff;
+
+  border-radius: 12px;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+
+.subject-selection-dialog h3 {
+  margin:
+    0 0 14px 0;
+
+  font-size: 1.2rem;
+}
+
+
+.subject-selection-search {
+  width: 100%;
+
+  padding: 10px 12px;
+
+  margin-bottom: 12px;
+
+  border: 1px solid #ccc;
+
+  border-radius: 8px;
+
+  font-size: 1rem;
+
+  box-sizing: border-box;
+}
+
+
+.subject-selection-list {
+  overflow-y: auto;
+
+  min-height: 0;
+
+  max-height: 55vh;
+
+  border:
+    1px solid #e0e0e0;
+
+  border-radius: 8px;
+
+  padding: 6px;
+
+  box-sizing: border-box;
+}
+
+
+.subject-selection-item {
+  display: block;
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  margin: 0;
+
+  border: none;
+
+  border-bottom:
+    1px solid #eeeeee;
+
+  background: #ffffff;
+
+  text-align: left;
+
+  font-size: 0.95rem;
+
+  cursor: pointer;
+}
+
+
+.subject-selection-item:last-child {
+  border-bottom: none;
+}
+
+
+.subject-selection-item:hover {
+  background: #f2f2f2;
+}
+
+
+.subject-selection-empty {
+  padding: 20px;
+
+  text-align: center;
+
+  color: #777;
+
+  font-size: 0.95rem;
+}
+
+
+.subject-selection-cancel {
+  margin-top: 12px;
+
+  padding: 10px;
+
+  border: 1px solid #ccc;
+
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  cursor: pointer;
+
+  font-size: 0.95rem;
+}
+
+
+.subject-selection-cancel:hover {
+  background: #f2f2f2;
+}
