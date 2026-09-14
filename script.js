@@ -1498,42 +1498,30 @@ async function fetchAllGasSubjects() {
     return state.data.gasAllSubjectsCache;
   }
 
-  const subjectMap = new Map();
-
   try {
-    for (const grade of ["1", "2", "3"]) {
-      const gasData =
-        await fetchGasAdminTimetable(grade);
+    const response =
+      await fetch("/api/timetable?admin=subjects");
 
-      if (!gasData) {
-        throw new Error(
-          `${grade}年の時間割データを取得できませんでした`
-        );
-      }
+    if (!response.ok) {
+      throw new Error(
+        `科目一覧の取得に失敗しました: ${response.status}`
+      );
+    }
 
-      (gasData.subjects || []).forEach((subject) => {
-        const subjectId =
-          String(subject.subject_id || "").trim();
+    const result =
+      await response.json();
 
-        if (!subjectId) return;
-
-        if (!subjectMap.has(subjectId)) {
-          subjectMap.set(subjectId, {
-            subject_id: subjectId,
-            subject_name:
-              String(subject.subject_name || "").trim()
-          });
-        }
-      });
+    if (!result.success) {
+      throw new Error(
+        result.error ||
+        "科目一覧を取得できませんでした"
+      );
     }
 
     const subjects =
-      Array.from(subjectMap.values())
-        .sort((a, b) =>
-          a.subject_id.localeCompare(
-            b.subject_id
-          )
-        );
+      Array.isArray(result.data)
+        ? result.data
+        : [];
 
     state.data.gasAllSubjectsCache =
       subjects;
