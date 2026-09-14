@@ -953,19 +953,23 @@ async function editChange(classItem, period, existingChange) {
 
   // ========================================
   // 保存直前のsubject_id存在チェック
+  // ※空欄は「変更をクリア」なので許可
   // ========================================
-  const validSubject =
-    allSubjects.some(
-      (subject) =>
-        String(subject.subject_id).trim() ===
-        subjectChange
-    );
+  if (subjectChange !== "") {
 
-  if (!validSubject) {
-    alert(
-      `存在しないsubject_idです。\n\n${subjectChange}`
-    );
-    return;
+    const validSubject =
+      allSubjects.some(
+        (subject) =>
+          String(subject.subject_id).trim() ===
+          subjectChange
+      );
+
+    if (!validSubject) {
+      alert(
+        `存在しないsubject_idです。\n\n${subjectChange}`
+      );
+      return;
+    }
   }
 
   // 現在のログインセッションを取得
