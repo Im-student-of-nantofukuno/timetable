@@ -1646,8 +1646,35 @@ async function showSubjectSelectionDialog(
 
       list.innerHTML = "";
 
-      const filtered =
-        subjects.filter((subject) => {
+        // ======================================
+        // 変更をクリア
+        // ======================================
+        const clearButton =
+          document.createElement("button");
+        
+        clearButton.type = "button";
+
+        clearButton.className =
+          "subject-selection-clear";
+
+        clearButton.textContent =
+          "変更をクリア（元の科目に戻す）";
+
+        clearButton.addEventListener(
+          "click",
+          () => {
+        
+            overlay.remove();
+
+            resolve("");
+          }
+        );
+
+        list.appendChild(clearButton);
+
+
+        const filtered =
+          subjects.filter((subject) => {
 
           const subjectId =
             String(
