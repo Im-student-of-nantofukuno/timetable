@@ -942,10 +942,11 @@ async function editChange(classItem, period, existingChange) {
   // 科目を検索・選択
   // ========================================
   const subjectChange =
-    await showSubjectSelectionDialog(
-      allSubjects,
-      current
-    );
+      await showSubjectSelectionDialog(
+        allSubjects,
+        current,
+        `${state.adminDay || "月"}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`
+      );
 
   if (subjectChange === null) {
     return;
@@ -1552,7 +1553,8 @@ async function fetchAllGasSubjects() {
 // ========================================
 async function showSubjectSelectionDialog(
   subjects,
-  currentValue
+  currentValue,
+  locationText
 ) {
   return new Promise((resolve) => {
 
@@ -1579,6 +1581,18 @@ async function showSubjectSelectionDialog(
     // ========================================
     // タイトル
     // ========================================
+    const location =
+      document.createElement("div");
+
+    location.className =
+      "subject-selection-location";
+
+    location.textContent =
+      locationText || "";
+
+    dialog.appendChild(location);
+
+
     const title =
       document.createElement("h3");
 
