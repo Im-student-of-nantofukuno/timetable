@@ -1159,3 +1159,22 @@ button.matrix-cell:hover {
 
   text-align: center;
 }
+
+/* 生徒画面のドキュメントアイコン */
+.info-icon-button {
+  display: none;
+}
+
+.info-icon-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* 生徒画面のときだけ表示 */
+.app-shell[data-view="student"] .info-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
