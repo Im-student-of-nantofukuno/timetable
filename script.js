@@ -319,6 +319,26 @@ $$("[data-view-button]").forEach((button) => {
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
 }
 
+  const studentInfoButton =
+    document.getElementById("student-info-button");
+
+  if (studentInfoButton) {
+    studentInfoButton.addEventListener(
+      "click",
+      () => {
+        const confirmed =
+          window.confirm(
+            "ドキュメントに飛びますか？"
+          );
+
+        if (confirmed) {
+          window.location.href =
+            "https://docs.google.com/document/d/1fU3y60iBCRSSywc3J4EdUebXePZ1NAMRqKeDYOOgRA8/edit?usp=sharing";
+        }
+      }
+    );
+  }
+
 async function loadAdminProfiles() {
   const button = $("#show-admin-profiles");
   const list = $("#admin-profile-list");
