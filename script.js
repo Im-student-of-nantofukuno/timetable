@@ -1095,13 +1095,54 @@ function editClassCourse(classItem) {
   renderStudent();
 }
 
-function editBaseSubject(classItem, period, currentSubject) {
-  const subject = prompt(`${classItem.label} ${state.data.courses[classItem.course]} ${period}限の基本教科`, currentSubject || "");
-  if (subject === null) return;
-  const timetable = [...(state.data.baseTimetables[classItem.id] || Array(7).fill(""))];
-  timetable[period - 1] = subject.trim();
-  state.data.baseTimetables[classItem.id] = timetable;
-  saveStored(STORAGE_KEYS.baseTimetables, state.data.baseTimetables);
+async function editBaseSubject(classItem, period, currentSubject) {
+  // ========================================
+  // 全科目一覧を取得
+  // ========================================
+  const allSubjects = await fetchAllGasSubjects();
+
+  if (!allSubjects) {
+    alert(
+      "科目一覧を取得できませんでした。\n" +
+      "時間割データを確認してください。"
+    );
+    return;
+  }
+
+  // ========================================
+  // 科目選択ダイアログを表示
+  // ========================================
+  const subjectId =
+    await showSubjectSelectionDialog(
+      allSubjects,
+      currentSubject,
+      `${classItem.label}　${state.data.courses[classItem.course] || ""}　${period}限目`
+    );
+
+  // キャンセル
+  if (subjectId === null) return;
+
+  // ========================================
+  // 選択されたsubject_idを基本時間割へ反映
+  // ========================================
+  const timetable = [
+    ...(state.data.baseTimetables[classItem.id] ||
+      Array(7).fill(""))
+  ];
+
+  timetable[period - 1] = subjectId;
+
+  state.data.baseTimetables[classItem.id] =
+    timetable;
+
+  saveStored(
+    STORAGE_KEYS.baseTimetables,
+    state.data.baseTimetables
+  );
+
+  // ========================================
+  // 画面を更新
+  // ========================================
   renderDeepAdmin();
   renderStudent();
 }
