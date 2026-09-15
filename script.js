@@ -1110,7 +1110,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
   }
 
   // ========================================
-  // 科目選択ダイアログを表示
+  // 科目選択ダイアログを表示 
   // ========================================
   const subjectId =
     await showSubjectSelectionDialog(
