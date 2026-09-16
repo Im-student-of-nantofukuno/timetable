@@ -29,6 +29,7 @@ const state = {
     course: "humanities"
   },
   adminDay: "月",
+  deepAdminDay: "月",
   data: {
     periods: [],
     courses: {},
@@ -218,7 +219,7 @@ $$("[data-view-button]").forEach((button) => {
       return;
     }
 
-    // 浅い管理画面・詳細管理画面
+    // 浅い管理画面・深い管理画面
     if (
       targetView === "quick-admin" ||
       targetView === "deep-admin"
@@ -299,7 +300,20 @@ $$("[data-view-button]").forEach((button) => {
     renderQuickAdmin();
   });
 
-  $("#deep-admin-grade")?.addEventListener("change", renderDeepAdmin);
+  $("#deep-admin-grade")?.addEventListener(
+    "change",
+    renderDeepAdmin
+  );
+
+  $("#deep-admin-day")?.addEventListener(
+    "change",
+    () => {
+      state.deepAdminDay =
+        $("#deep-admin-day").value;
+
+      renderDeepAdmin();
+    }
+  );
 
   $$(".segmented-control [data-admin-mode]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -875,26 +889,79 @@ function renderAdminPosts() {
 }
 
 function renderDeepAdmin() {
-  const grade = $("#deep-admin-grade")?.value || "2";
-  const classes = getClassesByGrade(grade);
-  const matrix = $("#base-matrix");
+  const grade =
+    $("#deep-admin-grade")?.value || "2";
+
+  const day =
+    $("#deep-admin-day")?.value ||
+    state.deepAdminDay ||
+    "月";
+
+  setSelectValue("#deep-admin-day", day);
+
+  const classes =
+    getClassesByGrade(grade);
+
+  const matrix =
+    $("#base-matrix");
+
   if (!matrix) return;
 
-  matrix.style.setProperty("--class-count", classes.length);
+  matrix.style.setProperty(
+    "--class-count",
+    classes.length
+  );
+
   matrix.replaceChildren();
-  appendMatrixHeader(matrix, classes, true);
+
+  appendMatrixHeader(
+    matrix,
+    classes,
+    true
+  );
 
   state.data.periods.forEach((period) => {
-    matrix.append(createCell(`${period}限`, "div", "matrix-cell matrix-cell--period"));
+    matrix.append(
+      createCell(
+        `${period}限`,
+        "div",
+        "matrix-cell matrix-cell--period"
+      )
+    );
 
     classes.forEach((classItem) => {
-      const base = state.data.baseTimetables[classItem.id] || [];
-      const subject = base[period - 1] || "";
-      const cell = createCell(subject || "教科", "button", `matrix-cell ${getSubjectClass(classItem.course)}`);
+      const base =
+        state.data.baseTimetables[classItem.id] ||
+        [];
+
+      const subject =
+        base[period - 1] || "";
+
+      const cell =
+        createCell(
+          subject || "教科",
+          "button",
+          `matrix-cell ${getSubjectClass(classItem.course)}`
+        );
+
       cell.type = "button";
-      cell.dataset.classId = classItem.id;
-      cell.dataset.period = String(period);
-      cell.addEventListener("click", () => editBaseSubject(classItem, period, subject));
+
+      cell.dataset.classId =
+        classItem.id;
+
+      cell.dataset.period =
+        String(period);
+
+      cell.addEventListener(
+        "click",
+        () =>
+          editBaseSubject(
+            classItem,
+            period,
+            subject
+          )
+      );
+
       matrix.append(cell);
     });
   });
