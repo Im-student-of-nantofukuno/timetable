@@ -889,78 +889,69 @@ function renderAdminPosts() {
 }
 
 function renderDeepAdmin() {
-  const grade =
-    $("#deep-admin-grade")?.value || "2";
-
+  const grade = $("#deep-admin-grade")?.value || "2";
   const day =
     $("#deep-admin-day")?.value ||
     state.deepAdminDay ||
     "月";
 
-  setSelectValue("#deep-admin-day", day);
-
-  const classes =
-    getClassesByGrade(grade);
-
-  const matrix =
-    $("#base-matrix");
+  const classes = getClassesByGrade(grade);
+  const matrix = $("#base-matrix");
 
   if (!matrix) return;
+
+  // 現在選択されている値をstateにも保存
+  state.deepAdminDay = day;
 
   matrix.style.setProperty(
     "--class-count",
     classes.length
   );
 
+  // 既存のセルをすべて削除
   matrix.replaceChildren();
 
-  appendMatrixHeader(
-    matrix,
-    classes,
-    true
-  );
+  // ヘッダーを生成
+  appendMatrixHeader(matrix, classes, true);
 
+  // 1〜7限をJavaScriptで生成
   state.data.periods.forEach((period) => {
-    matrix.append(
-      createCell(
-        `${period}限`,
-        "div",
-        "matrix-cell matrix-cell--period"
-      )
+    // 時限セル
+    const periodCell = createCell(
+      `${period}限`,
+      "div",
+      "matrix-cell matrix-cell--period"
     );
 
+    matrix.append(periodCell);
+
+    // 各クラスのセル
     classes.forEach((classItem) => {
       const base =
         state.data.baseTimetables[classItem.id] ||
-        [];
+        Array(7).fill("");
 
       const subject =
         base[period - 1] || "";
 
-      const cell =
-        createCell(
-          subject || "教科",
-          "button",
-          `matrix-cell ${getSubjectClass(classItem.course)}`
-        );
+      const cell = createCell(
+        subject || "教科",
+        "button",
+        `matrix-cell ${getSubjectClass(classItem.course)}`
+      );
 
       cell.type = "button";
+      cell.dataset.classId = classItem.id;
+      cell.dataset.period = String(period);
+      cell.dataset.day = day;
 
-      cell.dataset.classId =
-        classItem.id;
-
-      cell.dataset.period =
-        String(period);
-
-      cell.addEventListener(
-        "click",
-        () =>
-          editBaseSubject(
-            classItem,
-            period,
-            subject
-          )
-      );
+      cell.addEventListener("click", () => {
+        editBaseSubject(
+          classItem,
+          period,
+          subject
+        );
+      });
 
       matrix.append(cell);
     });
