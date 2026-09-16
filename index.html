@@ -74,7 +74,7 @@
           <button class="icon-button" type="button" data-view-button="quick-admin" aria-label="浅い管理画面">
             <span aria-hidden="true">🛠</span>
           </button>
-          <button class="icon-button" type="button" data-view-button="deep-admin" aria-label="詳細管理画面">
+          <button class="icon-button" type="button" data-view-button="deep-admin" aria-label="深い管理画面">
             <span aria-hidden="true">⚙</span>
           </button>
         </nav>
@@ -282,10 +282,22 @@
               <select id="deep-admin-grade" name="deep-admin-grade">
                 <option value="1">1</option>
                 <option value="2" selected>2</option>
-                <option value="3">3</option>
+              <option value="3">3</option>
               </select>
             </label>
-            <h1 id="deep-admin-heading">詳細編集画面</h1>
+
+            <label class="profile-chip profile-chip--day">
+              <span>曜日:</span>
+              <select id="deep-admin-day" name="deep-admin-day">
+                <option value="月" selected>月</option>
+                <option value="火">火</option>
+                <option value="水">水</option>
+                <option value="木">木</option>
+                <option value="金">金</option>
+              </select>
+            </label>
+
+            <h1 id="deep-admin-heading">深い編集画面</h1>
           </header>
 
           <section class="admin-layout">
