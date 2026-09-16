@@ -888,70 +888,134 @@ function renderAdminPosts() {
   });
 }
 
-function renderDeepAdmin() {
+async function renderDeepAdmin() {
+  if (
+    state.view !== "deep-admin" ||
+    !state.authenticated ||
+    state.adminProfile?.role !== "admin"
+  ) {
+    return;
+  }
+
   const grade = $("#deep-admin-grade")?.value || "2";
   const day =
     $("#deep-admin-day")?.value ||
     state.deepAdminDay ||
     "月";
 
-  const classes = getClassesByGrade(grade);
   const matrix = $("#base-matrix");
 
   if (!matrix) return;
 
-  // 現在選択されている値をstateにも保存
   state.deepAdminDay = day;
+
+  // 浅い管理画面と同じGASデータを使用
+  const gasData = await fetchGasAdminTimetable(grade);
+
+  if (!gasData) {
+    matrix.replaceChildren(
+      createEmptyState("時間割を取得できませんでした。")
+    );
+    return;
+  }
+
+  const classes = gasData.classes || [];
 
   matrix.style.setProperty(
     "--class-count",
     classes.length
   );
 
-  // 既存のセルをすべて削除
+  // ここで既存セルを全部消す
   matrix.replaceChildren();
 
-  // ヘッダーを生成
-  appendMatrixHeader(matrix, classes, true);
+  // ヘッダーもJSで生成
+  appendMatrixHeader(
+    matrix,
+    classes.map(convertGasClassForDisplay),
+    true
+  );
 
-  // 1〜7限をJavaScriptで生成
+  // 選択中の曜日
+  const dayData =
+    gasData.timetable?.[day] || {};
+
+  // 1〜7限
   state.data.periods.forEach((period) => {
-    // 時限セル
-    const periodCell = createCell(
-      `${period}限`,
-      "div",
-      "matrix-cell matrix-cell--period"
+    matrix.append(
+      createCell(
+        `${period}限`,
+        "div",
+        "matrix-cell matrix-cell--period"
+      )
     );
 
-    matrix.append(periodCell);
+    classes.forEach((gasClass) => {
+      const classId =
+        String(gasClass.class_id);
 
-    // 各クラスのセル
-    classes.forEach((classItem) => {
-      const base =
-        state.data.baseTimetables[classItem.id] ||
-        Array(7).fill("");
+      const classItem =
+        convertGasClassForDisplay(gasClass);
 
-      const subject =
-        base[period - 1] || "";
+      const timetable =
+        dayData[classId] || [];
 
-      const cell = createCell(
-        subject || "教科",
-        "button",
-        `matrix-cell ${getSubjectClass(classItem.course)}`
-      );
+      const timetableItem =
+        timetable.find(
+          (item) =>
+            Number(item.period) === Number(period)
+        );
+
+      // 基本時間割
+      const subjectBase =
+        timetableItem?.subject_base || "";
+
+      // 変更後の時間割
+      const subjectChange =
+        timetableItem?.subject_change || "";
+
+      // 深い画面では基本時間割を表示
+      // 変更がある場合は変更後を表示
+      const displaySubjectId =
+        subjectChange || subjectBase;
+
+      const displayName =
+        displaySubjectId
+          ? getGasAdminSubjectDisplayName(
+              gasData,
+              displaySubjectId,
+              timetableItem
+            )
+          : "教科";
+
+      const cell =
+        createCell(
+          displayName,
+          "button",
+          `matrix-cell ${getSubjectClass(classItem.course)}`
+        );
 
       cell.type = "button";
-      cell.dataset.classId = classItem.id;
-      cell.dataset.period = String(period);
-      cell.dataset.day = day;
 
-      cell.addEventListener("click", () => {
-        editBaseSubject(
-          classItem,
-          period,
-          subject
-        );
-      });
+      cell.dataset.classId =
+        classId;
+
+      cell.dataset.period =
+        String(period);
+
+      cell.dataset.day =
+        day;
+
+      cell.addEventListener(
+        "click",
+        () => {
+          editBaseSubject(
+            classItem,
+            period,
+            displaySubjectId
+          );
+        }
+      );
 
       matrix.append(cell);
     });
