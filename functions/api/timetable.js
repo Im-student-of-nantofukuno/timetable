@@ -2,7 +2,8 @@ export async function onRequestGet(context) {
   try {
     const env = context.env;
     const requestUrl = new URL(context.request.url);
-
+    console.log("受信したGET URL:", requestUrl.toString());
+    
     // ブラウザから送られたGETパラメータを取得 
     const params = requestUrl.searchParams;
     
