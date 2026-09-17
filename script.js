@@ -985,9 +985,8 @@ async function renderDeepAdmin() {
               gasData,
               displaySubjectId,
               timetableItem
-            )
-          : "教科";
-
+            ) || displaySubjectId
+          : "";
       const cell =
         createCell(
           displayName,
