@@ -1218,7 +1218,7 @@ function editClassCourse(classItem) {
 
 async function editBaseSubject(classItem, period, currentSubject) {
   // ========================================
-  // 全科目一覧を取得
+  // 全学年の科目一覧を取得
   // ========================================
   const allSubjects = await fetchAllGasSubjects();
 
@@ -1231,7 +1231,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
   }
 
   // ========================================
-  // 科目選択ダイアログを表示 
+  // 科目を検索・選択
   // ========================================
   const subjectId =
     await showSubjectSelectionDialog(
@@ -1241,31 +1241,155 @@ async function editBaseSubject(classItem, period, currentSubject) {
     );
 
   // キャンセル
-  if (subjectId === null) return;
+  if (subjectId === null) {
+    return;
+  }
 
   // ========================================
-  // 選択されたsubject_idを基本時間割へ反映
+  // subject_idの存在チェック
+  // 空欄は「基本時間割を空欄にする」ため許可
   // ========================================
-  const timetable = [
-    ...(state.data.baseTimetables[classItem.id] ||
-      Array(7).fill(""))
-  ];
+  if (subjectId !== "") {
+    const validSubject =
+      allSubjects.some(
+        (subject) =>
+          String(subject.subject_id).trim() ===
+          String(subjectId).trim()
+      );
 
-  timetable[period - 1] = subjectId;
-
-  state.data.baseTimetables[classItem.id] =
-    timetable;
-
-  saveStored(
-    STORAGE_KEYS.baseTimetables,
-    state.data.baseTimetables
-  );
+    if (!validSubject) {
+      alert(
+        `存在しないsubject_idです。\n\n${subjectId}`
+      );
+      return;
+    }
+  }
 
   // ========================================
-  // 画面を更新
+  // ログイン状態を確認
   // ========================================
-  renderDeepAdmin();
-  renderStudent();
+  const {
+    data: { session },
+    error: sessionError
+  } = await window.supabaseClient.auth.getSession();
+
+  if (sessionError) {
+    console.error(
+      "認証状態の取得に失敗:",
+      sessionError
+    );
+
+    alert(
+      "ログイン状態の確認に失敗しました。"
+    );
+
+    return;
+  }
+
+  if (!session) {
+    alert("ログインしてください。");
+    return;
+  }
+
+  // ========================================
+  // 曜日
+  // ========================================
+  const day =
+    state.deepAdminDay ||
+    state.adminDay ||
+    "月";
+
+  try {
+    // ========================================
+    // Cloudflare Pages Function経由で保存
+    // ========================================
+    const response =
+      await fetch("/api/timetable-change", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization":
+            `Bearer ${session.access_token}`
+        },
+
+        body: JSON.stringify({
+          action: "updateTimetableBase",
+
+          classId: classItem.id,
+          grade: classItem.grade,
+          day,
+          period,
+
+          subjectBase: subjectId,
+
+          // 今回は基本時間割だけ変更
+          teacherChange: ""
+        })
+      });
+
+    const result =
+      await response.json();
+
+    console.log(
+      "基本時間割変更結果:",
+      result
+    );
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.error ||
+        "基本時間割の変更に失敗しました"
+      );
+    }
+
+    // ========================================
+    // ブラウザ側のGASキャッシュを削除
+    // ========================================
+    delete state.data.gasAdminTimetableCache[
+      String(classItem.grade)
+    ];
+
+    // ========================================
+    // 学生側のクラスデータキャッシュも削除
+    // ========================================
+    const profileKey =
+      `${classItem.grade}-${classItem.classNo}-${classItem.course}`;
+
+    delete state.data.gasClassDataCache[
+      profileKey
+    ];
+
+    // ========================================
+    // 完了
+    // ========================================
+    alert(
+      `${day}曜日 ${period}限の基本時間割を` +
+      `「${subjectId || "空欄"}」に変更しました。`
+    );
+
+    // ========================================
+    // 最新データをGASから再取得
+    // ========================================
+    await renderDeepAdmin();
+
+    // 学生画面も更新
+    await renderStudent();
+
+  } catch (error) {
+    console.error(
+      "基本時間割変更エラー:",
+      error
+    );
+
+    alert(
+      "基本時間割の変更に失敗しました。\n\n" +
+      error.message
+    );
+  }
 }
 
 async function handlePostSubmit(event) {
