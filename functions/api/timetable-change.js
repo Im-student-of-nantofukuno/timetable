@@ -96,21 +96,23 @@ export async function onRequestPost(context) {
     // ========================================
     // 5. GASへデータを送信
     // ========================================
+    const gasStartTime = Date.now();
+
     const gasResponse = await fetch(
       env.GAS_API_URL,
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          ...body,
-
-          // 秘密の値はCloudflare側からのみ付加する
-          secret: env.GAS_WRITE_SECRET
-        })
+        method:"POST",
+        redirect:"follow",
+        cache:"no-store",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({...body,secret:env.GAS_WRITE_SECRET})
       }
     );
+
+    console.log("GAS request elapsed ms:", Date.now() - gasStartTime);
+    console.log("GAS response status:", gasResponse.status);
+    console.log("GAS response URL:", gasResponse.url);
+    console.log("GAS response redirected:", gasResponse.redirected);
 
     // GASからの応答を取得
     const gasText = await gasResponse.text();
