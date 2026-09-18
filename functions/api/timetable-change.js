@@ -109,12 +109,27 @@ export async function onRequestPost(context) {
       }
     );
 
-    console.log("GAS request elapsed ms:", Date.now() - gasStartTime);
     console.log("GAS response status:", gasResponse.status);
     console.log("GAS response URL:", gasResponse.url);
     console.log("GAS response redirected:", gasResponse.redirected);
+    console.log("GAS response location:", gasResponse.headers.get("location"));
 
-    // GASからの応答を取得
+    // Apps Script Content Service は正常時でも302で
+    // script.googleusercontent.comへリダイレクトする。
+    // manual redirectの場合、この302をそのまま受け取る。
+    if (
+      gasResponse.status === 301 ||
+      gasResponse.status === 302 ||
+      gasResponse.status === 303 ||
+      gasResponse.status === 307 ||
+      gasResponse.status === 308
+    ) {
+      return jsonResponse({
+        success: true,
+        message: "GASへの書き込み要求を受け付けました"
+      });
+    }
+
     const gasText = await gasResponse.text();
 
     let gasData;
@@ -124,18 +139,24 @@ export async function onRequestPost(context) {
     } catch (error) {
       console.error("GAS response status:", gasResponse.status);
       console.error("GAS response URL:", gasResponse.url);
-      console.error("GAS response content-type:", gasResponse.headers.get("content-type"));
+      console.error(
+        "GAS response content-type:",
+        gasResponse.headers.get("content-type")
+      );
       console.error("GAS response text:", gasText);
 
       gasData = {
         success: false,
         error:
           "GASからJSONではない応答が返されました。\n" +
-          "HTTP: " + gasResponse.status +
+          "HTTP: " +
+          gasResponse.status +
           "\nContent-Type: " +
           gasResponse.headers.get("content-type")
       };
     }
+
+return jsonResponse(gasData, gasResponse.ok ? 200 : 500);
 
     return jsonResponse(
       gasData,
