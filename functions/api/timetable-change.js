@@ -102,7 +102,7 @@ export async function onRequestPost(context) {
       env.GAS_API_URL,
       {
         method:"POST",
-        redirect:"follow",
+        redirect:"manual",
         cache:"no-store",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({...body,secret:env.GAS_WRITE_SECRET})
