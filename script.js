@@ -39,7 +39,7 @@ const state = {
     changes: [],
     notifications: [],
     managers: [],
-    gasClassDataCache: {},
+    gasClassOptionsCache: {},
     gasAdminTimetableCache: {},
     gasAllSubjectsCache: null,
   }
@@ -279,19 +279,71 @@ $$("[data-view-button]").forEach((button) => {
     renderStudent();
   });
     
-  ["#student-grade", "#student-class", "#student-course"].forEach((selector) => {
+  // ========================================
+  // 生徒側プロフィール変更
+  // ========================================
+
+  // 学年・組が変わった場合
+  ["#student-grade", "#student-class"].forEach((selector) => {
     const element = $(selector);
     if (!element) return;
-    element.addEventListener("change", () => {
-      state.profile = {
-        grade: $("#student-grade").value,
-        classNo: $("#student-class").value,
-        course: $("#student-course").value
-      };
-      ensureValidStudentProfile();
+
+    element.addEventListener("change", async () => {
+      state.profile.grade = $("#student-grade").value;
+      state.profile.classNo = $("#student-class").value;
+
+      // 年組が変わったので、まずコース一覧をGASから取得
+      const optionsData = await fetchGasClassOptions(
+        state.profile.grade,
+        state.profile.classNo
+      );
+
+      if (!optionsData) {
+        return;
+      }
+
+      // 取得したコースを選択欄へ反映
+      updateStudentCourseOptions(
+        optionsData.courses,
+        state.profile.course
+      );
+
+      // 現在選択可能なコースを確認
+      const courseSelect = $("#student-course");
+
+      if (
+        !courseSelect ||
+        !optionsData.courses?.[courseSelect.value]
+      ) {
+        const firstCourse =
+          Object.keys(optionsData.courses || {})[0];
+
+        if (firstCourse) {
+          courseSelect.value = firstCourse;
+          state.profile.course = firstCourse;
+        }
+      } else {
+        state.profile.course = courseSelect.value;
+      }
+
       saveStored(STORAGE_KEYS.profile, state.profile);
-      renderStudent();
+
+      await renderStudent();
     });
+  });
+
+  // コースだけが変わった場合
+  $("#student-course")?.addEventListener("change", () => {
+    state.profile.course =
+      $("#student-course").value;
+
+    saveStored(
+      STORAGE_KEYS.profile,
+      state.profile
+    );
+
+    // ★ここではGASを呼ばない
+    renderStudent();
   });
 
   $("#admin-grade")?.addEventListener("change", renderQuickAdmin);
@@ -509,25 +561,28 @@ async function renderStudent() {
 
 
   // ========================================
-  // GASから現在のクラスデータを取得
+  // GASから現在の年組データを取得
+  //
+  // 年組ごとに1回だけ取得し、
+  // 文系・理系などのコースはブラウザ側で切り替える
   // ========================================
 
-  const profileKey =
-    `${state.profile.grade}-${state.profile.classNo}-${state.profile.course}`;
+  const optionsData =
+    await fetchGasClassOptions(
+      state.profile.grade,
+      state.profile.classNo
+    );
 
-  const cachedData =
-    state.data.gasClassDataCache[profileKey];
+  console.log(
+    "年組全コースデータ:",
+    optionsData
+  );
 
-  const gasData = cachedData
-    || await fetchGasClassData(state.profile);
-
-  console.log("gasData:", gasData);
-  console.log("state.data.gasClassData:", state.data.gasClassData);
   // ========================================
   // GAS取得失敗
   // ========================================
 
-  if (!gasData) {
+  if (!optionsData) {
 
     $$(".period-subject").forEach(
       (subjectNode) => {
@@ -546,9 +601,86 @@ async function renderStudent() {
     return;
   }
 
-  if (!cachedData) {
-    state.data.gasClassDataCache[profileKey] = gasData;
+  // ========================================
+  // コース選択欄をJSONに合わせる
+  // ========================================
+
+  updateStudentCourseOptions(
+    optionsData.courses,
+    state.profile.course
+  );
+
+  // ========================================
+  // 現在選択されているコースのデータを取得
+  // ========================================
+
+  let gasData =
+    optionsData.courses?.[
+      state.profile.course
+    ];
+
+  // ========================================
+  // 現在のコースが存在しない場合
+  // ========================================
+
+  if (!gasData) {
+
+    const firstCourse =
+      Object.keys(
+        optionsData.courses || {}
+      )[0];
+
+    if (!firstCourse) {
+
+      console.error(
+        "利用可能なコースがありません:",
+        optionsData
+      );
+
+      $$(".period-subject").forEach(
+        (subjectNode) => {
+
+          subjectNode.textContent = "";
+
+          subjectNode
+            .closest("li")
+            ?.classList.remove("is-changed");
+
+        }
+      );
+
+      renderStudentNotices();
+
+      return;
+    }
+
+    state.profile.course =
+      firstCourse;
+
+    setSelectValue(
+      "#student-course",
+      firstCourse
+    );
+
+    saveStored(
+      STORAGE_KEYS.profile,
+      state.profile
+    );
+
+    gasData =
+      optionsData.courses[firstCourse];
   }
+
+  console.log(
+    "現在表示するコース:",
+    state.profile.course
+  );
+
+  console.log(
+    "現在表示する時間割データ:",
+    gasData
+  );
+  
   // ========================================
   // 今日の曜日を取得 2日以上先なら警告
   // ========================================
@@ -1651,21 +1783,46 @@ function escapeHtml(value) {
 }
 
 // ========================================
-// GASからクラスのデータを取得
+// GASから年組ごとの全コースデータを取得
+//
+// grade + class_no だけで取得する。
+// コースは指定しない。
 // ========================================
-async function fetchGasClassData(profile) {
+async function fetchGasClassOptions(grade, classNo) {
+
+  const cacheKey =
+    `${String(grade)}-${String(classNo)}`;
+
+  // ========================================
+  // ブラウザ側キャッシュ
+  // ========================================
+
+  const cached =
+    state.data.gasClassOptionsCache[cacheKey];
+
+  if (cached) {
+
+    console.log(
+      "生徒時間割：ブラウザキャッシュ使用:",
+      cacheKey
+    );
+
+    return cached;
+  }
+
   try {
-    const params = new URLSearchParams({
-      grade: String(profile.grade),
-      class_no: String(profile.classNo),
-      course: String(profile.course)
-    });
+
+    const params =
+      new URLSearchParams({
+        grade: String(grade),
+        class_no: String(classNo)
+      });
 
     const url =
       `/api/timetable?${params.toString()}`;
 
     console.log(
-      "時間割取得URL:",
+      "生徒時間割GAS request:",
       url
     );
 
@@ -1673,40 +1830,119 @@ async function fetchGasClassData(profile) {
       await fetch(url);
 
     console.log(
-      "時間割取得status:",
+      "生徒時間割GAS status:",
       response.status
     );
 
     if (!response.ok) {
+
       throw new Error(
         `時間割取得に失敗しました: ${response.status}`
       );
+
     }
 
     const result =
       await response.json();
 
     console.log(
-      "時間割取得JSON:",
+      "生徒時間割GAS response:",
       result
     );
 
     if (!result.success) {
+
       throw new Error(
         result.error ||
-        "GASからデータを取得できませんでした"
+        "GASから時間割を取得できませんでした"
       );
+
     }
+
+    // ========================================
+    // 年組単位でキャッシュ
+    // ========================================
+
+    state.data.gasClassOptionsCache[cacheKey] =
+      result.data;
 
     return result.data;
 
   } catch (error) {
+
     console.error(
-      "fetchGasClassData error:",
+      "fetchGasClassOptions error:",
       error
     );
 
     return null;
+  }
+}
+
+// ========================================
+// GASから返されたコース一覧を
+// 生徒側のコースselectへ反映
+// ========================================
+function updateStudentCourseOptions(
+  courses,
+  preferredCourse = ""
+) {
+
+  const select =
+    $("#student-course");
+
+  if (!select) return;
+
+  const courseLabels = {
+    humanities: "文系",
+    science: "理系",
+    "explore-humanities": "探文",
+    "explore-science": "探理",
+    agriculture: "農業",
+    welfare: "福祉"
+  };
+
+  const courseEntries =
+    Object.entries(courses || {});
+
+  select.replaceChildren();
+
+  courseEntries.forEach(
+    ([courseKey, courseData]) => {
+
+      const option =
+        document.createElement("option");
+
+      option.value =
+        courseKey;
+
+      option.textContent =
+        courseLabels[courseKey]
+        || courseData?.class?.course
+        || courseKey;
+
+      select.append(option);
+    }
+  );
+
+  // 以前選択していたコースが存在するなら維持
+  if (
+    preferredCourse &&
+    courses?.[preferredCourse]
+  ) {
+
+    select.value =
+      preferredCourse;
+
+    return;
+  }
+
+  // なければ最初のコース
+  if (courseEntries.length > 0) {
+
+    select.value =
+      courseEntries[0][0];
+
   }
 }
 
