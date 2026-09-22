@@ -751,7 +751,6 @@ async function renderQuickAdmin() {
   if (!matrix) return;
 
   // 学年単位のGASデータを取得
-    // 学年単位のGASデータを取得
   const gasData =
     await fetchGasAdminTimetable(grade);
 
@@ -763,6 +762,10 @@ async function renderQuickAdmin() {
     );
     return;
   }
+
+  // GASから取得したクラス一覧を使用
+  const classes =
+    gasData.classes || [];
 
   matrix.style.setProperty(
     "--class-count",
@@ -1739,11 +1742,7 @@ async function fetchGasAdminTimetable(grade) {
       cacheKey
     );
 
-    return {
-      success: true,
-      data: cached,
-      fromCache: true
-    };
+    return cached;
   }
 
   try {
@@ -1754,7 +1753,7 @@ async function fetchGasAdminTimetable(grade) {
       });
 
     const url =
-      `/api/timetable?${params.toString()}`;
+        `/api/timetable?${params.toString()}`;;
 
     console.log(
       "浅い管理画面GAS request:",
@@ -1790,13 +1789,9 @@ async function fetchGasAdminTimetable(grade) {
       cacheKey
     ] = result.data;
 
-    return {
-      success: true,
-      data: result.data,
-      fromCache: false
-    };
+    return result.data;
 
-    } catch (error) {
+  } catch (error) {
     console.error(
       "fetchGasAdminTimetable error:",
       error
