@@ -2068,6 +2068,11 @@ async function showSubjectSelectionDialog(
         button.className =
           "subject-selection-item";
 
+        // ジョイント科目だけ、ほんの少し色を変える
+        if (/^j[A-Z]{2}\d{3}$/.test(subjectId)) {
+          button.style.backgroundColor = "#f4f8ff";
+        }
+
         // 「科目ID : 科目名」の形式
         button.textContent =
           `${subjectId} : ${subjectName}`;
