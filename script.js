@@ -752,46 +752,17 @@ async function renderQuickAdmin() {
 
   // 学年単位のGASデータを取得
     // 学年単位のGASデータを取得
-  const fetchResult =
+  const gasData =
     await fetchGasAdminTimetable(grade);
 
-  let gasData;
-  let timetableIsStale = false;
-
-  if (!fetchResult.success) {
-    // 今回の取得には失敗したが、
-    // 以前正常取得したデータがある場合はそれを使用する
-    const cachedData =
-      state.data.gasAdminTimetableCache[
-        String(grade)
-      ];
-
-    if (!cachedData) {
-      matrix.replaceChildren(
-        createEmptyState(
-          "時間割を取得できませんでした。"
-        )
-      );
-
-      return;
-    }
-
-    gasData = cachedData;
-    timetableIsStale = true;
-
-    console.warn(
-      "最新の時間割を取得できませんでした。以前のデータを表示します。",
-      fetchResult.error
+  if (!gasData) {
+    matrix.replaceChildren(
+      createEmptyState(
+        "時間割を取得できませんでした。"
+      )
     );
-
-  } else {
-    gasData =
-      fetchResult.data;
+    return;
   }
-
-  // GASから取得したクラス一覧を使用
-  const classes =
-    gasData.classes || [];
 
   matrix.style.setProperty(
     "--class-count",
@@ -1825,16 +1796,13 @@ async function fetchGasAdminTimetable(grade) {
       fromCache: false
     };
 
-  } catch (error) {
+    } catch (error) {
     console.error(
       "fetchGasAdminTimetable error:",
       error
     );
 
-    return {
-      success: false,
-      error: error.message
-    };
+    return null;
   }
 }
 // ========================================
