@@ -932,8 +932,7 @@ async function renderDeepAdmin() {
   // ヘッダーもJSで生成
   appendMatrixHeader(
     matrix,
-    classes.map(convertGasClassForDisplay),
-    true
+    classes.map(convertGasClassForDisplay)
   );
 
   // 選択中の曜日
@@ -1040,21 +1039,31 @@ function renderManagers() {
   });
 }
 
-function appendMatrixHeader(matrix, classes, editableCourses = false) {
-  matrix.append(createCell("", "div", "matrix-cell matrix-cell--corner"));
+function appendMatrixHeader(matrix, classes) {
+  matrix.append(
+    createCell(
+      "",
+      "div",
+      "matrix-cell matrix-cell--corner"
+    )
+  );
 
   classes.forEach((classItem) => {
-    const courseLabel = state.data.courses[classItem.course] || "";
-    const label = editableCourses
-      ? `<span>${escapeHtml(classItem.label)}</span><button class="course-edit-button" type="button" data-class-id="${escapeHtml(classItem.id)}">${escapeHtml(courseLabel)}</button>`
-      : `${escapeHtml(classItem.label)}<br>${escapeHtml(courseLabel)}`;
-    const cell = createCell(label, "div", `matrix-cell ${getSubjectClass(classItem.course)}`, true);
-    if (editableCourses) {
-      $(".course-edit-button", cell)?.addEventListener("click", (event) => {
-        event.stopPropagation();
-        editClassCourse(classItem);
-      });
-    }
+    const courseLabel =
+      state.data.courses[classItem.course] || "";
+
+    const label =
+      `${escapeHtml(classItem.label)}<br>` +
+      `${escapeHtml(courseLabel)}`;
+
+    const cell =
+      createCell(
+        label,
+        "div",
+        `matrix-cell ${getSubjectClass(classItem.course)}`,
+        true
+      );
+
     matrix.append(cell);
   });
 }
@@ -1193,27 +1202,6 @@ async function editChange(classItem, period, existingChange) {
       error.message
     );
   }
-}
-
-function editClassCourse(classItem) {
-  const entries = Object.entries(state.data.courses);
-  const menu = entries.map(([value, label], index) => `${index + 1}: ${label}`).join("\n");
-  const currentIndex = Math.max(0, entries.findIndex(([value]) => value === classItem.course));
-  const answer = prompt(`${classItem.label} の文理を選択してください\n${menu}`, String(currentIndex + 1));
-  if (answer === null) return;
-
-  const selected = entries[Number(answer) - 1];
-  if (!selected) {
-    alert("一覧の番号で選択してください。");
-    return;
-  }
-
-  state.data.classCourses[classItem.id] = selected[0];
-  saveStored(STORAGE_KEYS.classCourses, state.data.classCourses);
-  state.data.classes = applyClassCourseOverrides(state.data.classes);
-  renderDeepAdmin();
-  renderQuickAdmin();
-  renderStudent();
 }
 
 async function editBaseSubject(classItem, period, currentSubject) {
