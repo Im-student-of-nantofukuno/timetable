@@ -751,16 +751,42 @@ async function renderQuickAdmin() {
   if (!matrix) return;
 
   // 学年単位のGASデータを取得
-  const gasData =
+    // 学年単位のGASデータを取得
+  const fetchResult =
     await fetchGasAdminTimetable(grade);
 
-  if (!gasData) {
-    matrix.replaceChildren(
-      createEmptyState(
-        "時間割を取得できませんでした。"
-      )
+  let gasData;
+  let timetableIsStale = false;
+
+  if (!fetchResult.success) {
+    // 今回の取得には失敗したが、
+    // 以前正常取得したデータがある場合はそれを使用する
+    const cachedData =
+      state.data.gasAdminTimetableCache[
+        String(grade)
+      ];
+
+    if (!cachedData) {
+      matrix.replaceChildren(
+        createEmptyState(
+          "時間割を取得できませんでした。"
+        )
+      );
+
+      return;
+    }
+
+    gasData = cachedData;
+    timetableIsStale = true;
+
+    console.warn(
+      "最新の時間割を取得できませんでした。以前のデータを表示します。",
+      fetchResult.error
     );
-    return;
+
+  } else {
+    gasData =
+      fetchResult.data;
   }
 
   // GASから取得したクラス一覧を使用
@@ -1742,7 +1768,11 @@ async function fetchGasAdminTimetable(grade) {
       cacheKey
     );
 
-    return cached;
+    return {
+      success: true,
+      data: cached,
+      fromCache: true
+    };
   }
 
   try {
@@ -1753,7 +1783,7 @@ async function fetchGasAdminTimetable(grade) {
       });
 
     const url =
-        `/api/timetable?${params.toString()}`;;
+      `/api/timetable?${params.toString()}`;
 
     console.log(
       "浅い管理画面GAS request:",
@@ -1789,7 +1819,11 @@ async function fetchGasAdminTimetable(grade) {
       cacheKey
     ] = result.data;
 
-    return result.data;
+    return {
+      success: true,
+      data: result.data,
+      fromCache: false
+    };
 
   } catch (error) {
     console.error(
@@ -1797,7 +1831,10 @@ async function fetchGasAdminTimetable(grade) {
       error
     );
 
-    return null;
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 // ========================================
