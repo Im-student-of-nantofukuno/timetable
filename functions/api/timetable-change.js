@@ -151,6 +151,21 @@ export async function onRequestPost(context) {
       gasData,
       gasResponse.ok ? 200 : 500
     );
+
+  } catch (error) {
+    console.error("timetable-change error:", error);
+
+    return jsonResponse(
+      {
+        success: false,
+        error: error.message
+      },
+      500
+    );
+  }
+}
+
+
 // ========================================
 // JSONレスポンス用
 // ========================================
