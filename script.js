@@ -1307,13 +1307,7 @@ async function editChange(classItem, period, existingChange) {
       String(classItem.grade)
     ];
 
-    // 学生側のクラスデータキャッシュも削除
-    const profileKey =
-      `${classItem.grade}-${classItem.classNo}-${classItem.course}`;
-
-    delete state.data.gasClassDataCache[profileKey];
-
-    alert(
+      alert(
       `${day}曜日 ${period}限を「${subjectChange}」に変更しました。`
     );
 
@@ -1471,16 +1465,6 @@ async function editBaseSubject(classItem, period, currentSubject) {
     // ========================================
     delete state.data.gasAdminTimetableCache[
       String(classItem.grade)
-    ];
-
-    // ========================================
-    // 学生側のクラスデータキャッシュも削除
-    // ========================================
-    const profileKey =
-      `${classItem.grade}-${classItem.classNo}-${classItem.course}`;
-
-    delete state.data.gasClassDataCache[
-      profileKey
     ];
 
     // ========================================
