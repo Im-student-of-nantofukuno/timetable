@@ -22,7 +22,7 @@ export async function onRequestPost(context) {
       );
     }
 
-    const accessToken = authorization.substring(7);
+    const accessToken = authorization.substring(7); 
 
     // ========================================
     // 2. ブラウザから送られたデータを取得
