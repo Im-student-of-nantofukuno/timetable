@@ -1274,6 +1274,119 @@ async function editChange(classItem, period, existingChange) {
 
   const day = state.adminDay || "月";
 
+  // ========================================
+  // 担当教員・担当場所の重複チェック
+  // ========================================
+
+  const conflictResponse = await fetch(
+    "/api/timetable-change",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        action: "checkTimetableConflict",
+        classId: classItem.id,
+        grade: classItem.grade,
+        day,
+        period,
+        subjectChange
+      })
+    }
+  );
+
+  const conflictResult =
+    await conflictResponse.json();
+
+  console.log(
+    "重複チェック結果:",
+    conflictResult
+  );
+
+  if (
+    !conflictResponse.ok ||
+    !conflictResult.success
+  ) {
+    throw new Error(
+      conflictResult.error ||
+      "重複チェックに失敗しました"
+    );
+  }
+
+
+  // ========================================
+  // 重複があれば警告
+  // ========================================
+
+  if (
+    conflictResult.conflicts &&
+    conflictResult.conflicts.length > 0
+  ) {
+
+    const teacherConflicts =
+      conflictResult.conflicts.filter(
+        conflict =>
+          conflict.type === "teacher"
+      );
+
+    const placeConflicts =
+      conflictResult.conflicts.filter(
+        conflict =>
+          conflict.type === "place"
+      );
+
+    let warningMessage =
+      "⚠ 時間割の重複が見つかりました。\n\n";
+
+    if (teacherConflicts.length > 0) {
+
+      warningMessage +=
+        "【担当教員の重複】\n";
+
+      teacherConflicts.forEach(
+        conflict => {
+
+          warningMessage +=
+            `・${conflict.teacher_id}` +
+            ` → class_id ${conflict.class_id}` +
+            `（${conflict.subject_id}）\n`;
+        }
+      );
+
+      warningMessage += "\n";
+    }
+
+    if (placeConflicts.length > 0) {
+
+      warningMessage +=
+        "【担当場所の重複】\n";
+
+      placeConflicts.forEach(
+        conflict => {
+
+          warningMessage +=
+            `・${conflict.place}` +
+            ` → class_id ${conflict.class_id}` +
+            `（${conflict.subject_id}）\n`;
+        }
+      );
+
+      warningMessage += "\n";
+    }
+
+    warningMessage +=
+      "このまま時間割を変更しますか？";
+
+    const proceed =
+      confirm(warningMessage);
+
+    if (!proceed) {
+      return;
+    }
+  }
+
   try {
     const response = await fetch("/api/timetable-change", {
       method: "POST",
