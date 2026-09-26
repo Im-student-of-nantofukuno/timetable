@@ -101,34 +101,22 @@ export async function onRequestPost(context) {
     const gasResponse = await fetch(
       env.GAS_API_URL,
       {
-        method:"POST",
-        redirect:"manual",
-        cache:"no-store",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({...body,secret:env.GAS_WRITE_SECRET})
+        method: "POST",
+        redirect: "follow",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...body,
+          secret: env.GAS_WRITE_SECRET
+        })
       }
     );
 
     console.log("GAS response status:", gasResponse.status);
     console.log("GAS response URL:", gasResponse.url);
     console.log("GAS response redirected:", gasResponse.redirected);
-    console.log("GAS response location:", gasResponse.headers.get("location"));
-
-    // Apps Script Content Service は正常時でも302で
-    // script.googleusercontent.comへリダイレクトする。
-    // manual redirectの場合、この302をそのまま受け取る。
-    if (
-      gasResponse.status === 301 ||
-      gasResponse.status === 302 ||
-      gasResponse.status === 303 ||
-      gasResponse.status === 307 ||
-      gasResponse.status === 308
-    ) {
-      return jsonResponse({
-        success: true,
-        message: "GASへの書き込み要求を受け付けました"
-      });
-    }
 
     const gasText = await gasResponse.text();
 
@@ -145,38 +133,24 @@ export async function onRequestPost(context) {
       );
       console.error("GAS response text:", gasText);
 
-      gasData = {
-        success: false,
-        error:
-          "GASからJSONではない応答が返されました。\n" +
-          "HTTP: " +
-          gasResponse.status +
-          "\nContent-Type: " +
-          gasResponse.headers.get("content-type")
-      };
+      return jsonResponse(
+        {
+          success: false,
+          error:
+            "GASからJSONではない応答が返されました。\n" +
+            "HTTP: " +
+            gasResponse.status +
+            "\nContent-Type: " +
+            gasResponse.headers.get("content-type")
+        },
+        500
+      );
     }
-
-return jsonResponse(gasData, gasResponse.ok ? 200 : 500);
 
     return jsonResponse(
       gasData,
       gasResponse.ok ? 200 : 500
     );
-
-  } catch (error) {
-    console.error("timetable-change error:", error);
-
-    return jsonResponse(
-      {
-        success: false,
-        error: error.message
-      },
-      500
-    );
-  }
-}
-
-
 // ========================================
 // JSONレスポンス用
 // ========================================
