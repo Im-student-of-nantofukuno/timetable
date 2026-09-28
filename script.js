@@ -191,6 +191,9 @@ function bindEvents() {
     button.addEventListener("click", async () => {
       const targetView = button.dataset.viewButton;
 
+      console.log("クリックされたボタン:", button);
+      console.log("targetView:", targetView);
+
       // 管理者ログインアイコン
       if (targetView === "login") {
         const {
