@@ -264,7 +264,6 @@ $$("[data-view-button]").forEach((button) => {
       }
       return;
   });
-});
   $("#logout-button")?.addEventListener("click", handleLogout);
   $("#show-admin-profiles")?.addEventListener("click", loadAdminProfiles);
 
