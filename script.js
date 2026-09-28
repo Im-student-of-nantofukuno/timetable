@@ -84,18 +84,9 @@ async function setupAuth() {
 
     if (!data) {
       console.log("管理者プロフィールなし");
-
-      alert(
-        "管理者として登録されていません。\n\n" +
-        "あなたのユーザーID：\n" +
-        session.user.id +
-        "\n\n" +
-        "このIDを管理者に伝えて、登録してもらってください。"
-      );
-
       return false;
     }
-
+    
     state.adminProfile = data;
 
     console.log("管理者プロフィール:", data);
@@ -250,14 +241,28 @@ $$("[data-view-button]").forEach((button) => {
       } else if (!state.authenticated) {
         handleGoogleLogin();
       } else {
-        alert("管理者権限がありません。");
+        const {
+          data: { session },
+          error
+        } = await window.supabaseClient.auth.getSession();
+
+        if (error || !session) {
+          alert("ログイン状態を確認できませんでした。");
+          setView("student");
+          return;
+        }
+
+        alert(
+          "管理者として登録されていません。\n\n" +
+          "あなたのユーザーID：\n" +
+          session.user.id +
+          "\n\n" +
+          "このIDを管理者に伝えて、登録してもらってください。"
+        );
+
         setView("student");
       }
-
       return;
-    }
-
-    setView(targetView);
   });
 });
   $("#logout-button")?.addEventListener("click", handleLogout);
