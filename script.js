@@ -385,10 +385,7 @@ function bindEvents() {
         if (targetView === "deep-admin") {
           renderDeepAdmin();
         }
-
-        setView("student");
-        }
-        
+          
         return;
       }
     });
