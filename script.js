@@ -91,7 +91,7 @@ async function setupAuth() {
 
     console.log("管理者プロフィール:", data);
 
-    return data.role === "admin";
+    return data.role === "quick" || data.role === "deep";
   };
 
   const {
@@ -211,7 +211,10 @@ function bindEvents() {
           return;
         }
   
-       if (state.adminProfile?.role === "admin") {
+       if (
+         state.adminProfile?.role === "quick" ||
+         state.adminProfile?.role === "deep"
+       ) {
          setView("quick-admin");
          renderQuickAdmin();
        } else {
@@ -341,26 +344,53 @@ function bindEvents() {
       }
         
       // 浅い管理画面・深い管理画面
+      // 浅い管理画面・深い管理画面
       if (
         targetView === "quick-admin" ||
         targetView === "deep-admin"
       ) {
-        
+
+        // 未ログイン
+        if (!state.authenticated) {
+          handleGoogleLogin();
+          return;
+        }
+
+          const role = state.adminProfile?.role;
+
+        // 深い管理画面は deep のみ
         if (
-          state.authenticated &&
-          state.adminProfile?.role === "admin"
+          targetView === "deep-admin" &&
+          role !== "deep"
         ) {
-          setView(targetView);
+          alert("深い管理画面を利用する権限がありません。");
+          setView("student");
+          return;
+        }
 
-          if (targetView === "quick-admin") {
-            renderQuickAdmin();
-          }
+        // 浅い管理画面は quick / deep の両方
+        if (
+          targetView === "quick-admin" &&
+          role !== "quick" &&
+          role !== "deep"
+        ) {
+          alert("管理画面を利用する権限がありません。");
+          setView("student");
+          return;
+        }
 
-          if (targetView === "deep-admin") {
-            renderDeepAdmin();
-          }
+        setView(targetView);
 
-        } else if (!state.authenticated) {
+        if (targetView === "quick-admin") {
+          renderQuickAdmin();
+        }
+
+        if (targetView === "deep-admin") {
+          renderDeepAdmin();
+        }
+
+        return;
+      }
           handleGoogleLogin();
         } else {
           const {
@@ -999,7 +1029,10 @@ async function renderQuickAdmin() {
   if (
     state.view !== "quick-admin" ||
     !state.authenticated ||
-    state.adminProfile?.role !== "admin"
+    (
+      state.adminProfile?.role !== "quick" &&
+      state.adminProfile?.role !== "deep"
+    )
   ) {
     return;
   }
