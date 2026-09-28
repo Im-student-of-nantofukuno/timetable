@@ -85,16 +85,13 @@ async function setupAuth() {
     if (!data) {
       console.log("管理者プロフィールなし");
 
-      const message = $("#login-message");
-
-      if (message) {
-        message.innerHTML = `
-          管理者として登録されていません。<br>
-          あなたのユーザーID：<br>
-          <code>${session.user.id}</code><br>
-          <small>このIDを管理者に伝えて、登録してもらってください。</small>
-        `;
-      }
+      alert(
+        "管理者として登録されていません。\n\n" +
+        "あなたのユーザーID：\n" +
+        session.user.id +
+        "\n\n" +
+        "このIDを管理者に伝えて、登録してもらってください。"
+      );
 
       return false;
     }
