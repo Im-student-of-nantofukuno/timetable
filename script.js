@@ -214,9 +214,16 @@ function bindEvents() {
        if (state.adminProfile?.role === "admin") {
          setView("quick-admin");
          renderQuickAdmin();
-      } else {
-        console.log("管理者権限がありません");
-        setView("student");
+       } else {
+         alert(
+           "管理者として登録されていません。\n\n" +
+           "あなたのユーザーID：\n" +
+           session.user.id +
+           "\n\n" +
+           "このIDを管理者に伝えて、登録してもらってください。"
+         );
+
+         setView("student");
       }
 
         return;
@@ -227,10 +234,6 @@ function bindEvents() {
         targetView === "quick-admin" ||
         targetView === "deep-admin"
       ) {
-        console.log("管理画面ボタンが押されました:", targetView);
-        console.log("authenticated:", state.authenticated);
-        console.log("adminProfile:", state.adminProfile);
-
         
         if (
           state.authenticated &&
@@ -259,15 +262,6 @@ function bindEvents() {
             setView("student");
             return;
           }
-
-          alert(
-            "管理者として登録されていません。\n\n" +
-            "あなたのユーザーID：\n" +
-            session.user.id +
-            "\n\n" +
-            "このIDを管理者に伝えて、登録してもらってください。"
-          );
-
           setView("student");
         }
         
