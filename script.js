@@ -2255,11 +2255,71 @@ function handleManagerSubmit(event) {
   renderManagers();
 }
 
-function deleteNotification(id) {
-  state.data.notifications = state.data.notifications.filter((post) => post.id !== id);
-  saveStored(STORAGE_KEYS.notifications, state.data.notifications);
-  renderAdminPosts();
-  renderStudentNotices();
+async function deleteNotification(id) {
+  if (!id) {
+    alert("削除するお知らせが指定されていません。");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "このお知らせを削除しますか？"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    // ========================================
+    // Supabaseから削除
+    // ========================================
+    const { error } = await window.supabaseClient
+      .from("notifications")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(
+        "お知らせ削除失敗:",
+        error
+      );
+
+      throw new Error(
+        error.message ||
+        "お知らせの削除に失敗しました。"
+      );
+    }
+
+    // ========================================
+    // ブラウザ側のstateも更新
+    // ========================================
+    state.data.notifications =
+      state.data.notifications.filter(
+        (post) => post.id !== id
+      );
+
+    // ========================================
+    // 画面を更新
+    // ========================================
+    renderAdminPosts();
+    renderStudentNotices();
+
+    console.log(
+      "お知らせ削除成功:",
+      id
+    );
+
+  } catch (error) {
+    console.error(
+      "お知らせ削除エラー:",
+      error
+    );
+
+    alert(
+      "お知らせの削除に失敗しました。\n\n" +
+      error.message
+    );
+  }
 }
 
 function deleteManager(id) {
