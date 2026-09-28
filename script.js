@@ -1099,16 +1099,11 @@ async function renderDeepAdmin() {
 
       // 基本時間割
       const subjectBase =
-        timetableItem?.subject_base || "";
+      timetableItem?.subject_base || "";
 
-      // 変更後の時間割
-      const subjectChange =
-        timetableItem?.subject_change || "";
-
-      // 深い画面では基本時間割を表示
-      // 変更がある場合は変更後を表示
-      const displaySubjectId =
-        subjectChange || subjectBase;
+      // 深い管理画面では、変更後の時間割を無視して
+      // 基本時間割のみを表示
+      const displaySubjectId = subjectBase;
 
       const displayName =
         displaySubjectId
