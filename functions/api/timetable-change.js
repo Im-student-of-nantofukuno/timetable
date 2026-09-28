@@ -80,19 +80,78 @@ export async function onRequestPost(context) {
       );
     }
 
+
     const profiles = await adminProfileResponse.json();
 
-    const isAdmin =
-      profiles.length > 0 &&
-      profiles[0].role === "admin";
+    const role =
+      profiles.length > 0
+        ? profiles[0].role
+        : null;
 
-    if (!isAdmin) {
+    
+    // ========================================
+    // actionごとの権限確認
+    // ========================================
+
+    const action = body.action;
+
+    // 浅い管理画面からの時間割変更
+    const quickActions = [
+      "updateTimetableChange"
+    ];
+
+    // 深い管理画面からの操作
+    const deepActions = [
+      "updateTimetableBase"
+    ];
+
+
+    // 未知のaction
+    if (
+      !quickActions.includes(action) &&
+      !deepActions.includes(action)
+    ) {
       return jsonResponse(
-        { success: false, error: "管理者権限がありません" },
+        {
+          success: false,
+          error: "許可されていない操作です"
+        },
         403
       );
     }
 
+
+    // quick / deep が使える操作
+    if (quickActions.includes(action)) {
+
+      if (
+        role !== "quick" &&
+        role !== "deep"
+      ) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "時間割変更の権限がありません"
+          },
+          403
+        );
+      }
+    }
+
+
+// deep のみ使える操作
+if (deepActions.includes(action)) {
+
+  if (role !== "deep") {
+    return jsonResponse(
+      {
+        success: false,
+        error: "深い管理操作を行う権限がありません"
+      },
+      403
+    );
+  }
+}
     // ========================================
     // 5. GASへデータを送信
     // ========================================
