@@ -376,7 +376,7 @@ function bindEvents() {
           return;
         }
 
-      setView(targetView);
+        setView(targetView);
 
         if (targetView === "quick-admin") {
           renderQuickAdmin();
@@ -386,22 +386,7 @@ function bindEvents() {
           renderDeepAdmin();
         }
 
-        return;
-      }
-        
-          handleGoogleLogin();
-        } else {
-          const {
-            data: { session },
-            error
-          } = await window.supabaseClient.auth.getSession();
-
-          if (error || !session) {
-            alert("ログイン状態を確認できませんでした。");
-            setView("student");
-            return;
-          }
-          setView("student");
+        setView("student");
         }
         
         return;
