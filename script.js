@@ -332,7 +332,14 @@ function bindEvents() {
 
         return;
       }
-
+        
+      // 生徒画面
+      if (targetView === "student") {
+        setView("student");
+        renderStudent();
+        return;
+      }
+        
       // 浅い管理画面・深い管理画面
       if (
         targetView === "quick-admin" ||
