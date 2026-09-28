@@ -344,19 +344,16 @@ function bindEvents() {
       }
         
       // 浅い管理画面・深い管理画面
-      // 浅い管理画面・深い管理画面
       if (
         targetView === "quick-admin" ||
         targetView === "deep-admin"
       ) {
-
-        // 未ログイン
         if (!state.authenticated) {
           handleGoogleLogin();
           return;
         }
 
-          const role = state.adminProfile?.role;
+        const role = state.adminProfile?.role;
 
         // 深い管理画面は deep のみ
         if (
@@ -368,7 +365,7 @@ function bindEvents() {
           return;
         }
 
-        // 浅い管理画面は quick / deep の両方
+        // 浅い管理画面は quick / deep
         if (
           targetView === "quick-admin" &&
           role !== "quick" &&
@@ -379,7 +376,7 @@ function bindEvents() {
           return;
         }
 
-        setView(targetView);
+      setView(targetView);
 
         if (targetView === "quick-admin") {
           renderQuickAdmin();
@@ -391,6 +388,7 @@ function bindEvents() {
 
         return;
       }
+        
           handleGoogleLogin();
         } else {
           const {
