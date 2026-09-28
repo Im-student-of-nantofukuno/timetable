@@ -557,7 +557,6 @@ async function loadAdminProfiles() {
 
   if (!list) return;
 
-  // すでに取得済みなら再取得しない
   if (state.adminProfiles !== null) {
     return;
   }
@@ -567,7 +566,10 @@ async function loadAdminProfiles() {
     .select("user_id, display_name, role");
 
   if (error) {
-    console.error("管理者一覧取得失敗:", error);
+    console.error(
+      "管理者一覧取得失敗:",
+      error
+    );
 
     list.replaceChildren(
       createEmptyState(
@@ -598,19 +600,29 @@ async function loadAdminProfiles() {
   }
 
   state.adminProfiles.forEach((profile) => {
-    const item = document.createElement("li");
+    const item =
+      document.createElement("li");
 
-    const role = document.createElement("span");
+    const role =
+      document.createElement("span");
+
     role.textContent =
       profile.role || "role未設定";
 
-    const separator = document.createElement("span");
-    separator.textContent = " : ";
+    const separator =
+      document.createElement("span");
 
-    const name = document.createElement("span");
+    separator.textContent =
+      " : ";
+
+    const name =
+      document.createElement("span");
+
     name.textContent =
-      profile.display_name || "表示名未設定";
+      profile.display_name ||
+      "表示名未設定";
 
+    // User IDは先頭8文字だけ表示
     const userId =
       document.createElement("span");
 
@@ -619,6 +631,7 @@ async function loadAdminProfiles() {
         ? ` (${profile.user_id.slice(0, 8)}…)`
         : "";
 
+    // 削除ボタン
     const deleteButton =
       document.createElement("button");
 
@@ -627,22 +640,22 @@ async function loadAdminProfiles() {
     deleteButton.className =
       "admin-profile-delete";
 
-   deleteButton.addEventListener(
-     "click",
-     () => {
-       deleteAdminProfile(profile);
-     }
-   );
+    deleteButton.addEventListener(
+      "click",
+      () => {
+        deleteAdminProfile(profile);
+      }
+    );
 
-   item.append(
-     role,
-     separator,
-     name,
-     userID,
-     deleteButton
-   );
+    item.append(
+      role,
+      separator,
+      name,
+      userId,
+      deleteButton
+    );
 
-   list.append(item);
+    list.append(item);
   });
 }
 
