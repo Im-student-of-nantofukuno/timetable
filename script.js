@@ -224,6 +224,11 @@ function bindEvents() {
         targetView === "quick-admin" ||
         targetView === "deep-admin"
       ) {
+        console.log("管理画面ボタンが押されました:", targetView);
+        console.log("authenticated:", state.authenticated);
+        console.log("adminProfile:", state.adminProfile);
+
+        
         if (
           state.authenticated &&
           state.adminProfile?.role === "admin"
