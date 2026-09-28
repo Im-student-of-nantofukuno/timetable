@@ -392,7 +392,10 @@ function bindEvents() {
   });
     
   $("#logout-button")?.addEventListener("click", handleLogout);
-  $("#show-admin-profiles")?.addEventListener("click", loadAdminProfiles);
+  $("#add-admin-profile")?.addEventListener(
+    "click",
+    showAddAdminProfileDialog
+  );
 
   const studentDaySelect = $("#student-day");
 
@@ -1290,6 +1293,8 @@ async function renderDeepAdmin() {
   });
 
   renderManagers();
+    
+  await loadAdminProfiles();
 }
 
 function renderManagers() {
