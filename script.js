@@ -1166,7 +1166,7 @@ async function renderDeepAdmin() {
   if (
     state.view !== "deep-admin" ||
     !state.authenticated ||
-    state.adminProfile?.role !== "admin"
+    state.adminProfile?.role !== "deep"
   ) {
     return;
   }
