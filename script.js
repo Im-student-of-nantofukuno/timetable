@@ -1991,6 +1991,27 @@ async function editChange(classItem, period, existingChange) {
 
     alert(message);
 
+    // ========================================
+    // 変更履歴をSupabaseへ保存
+    // ========================================
+    try {
+      await addChangeHistory(
+        classItem,
+        period,
+        subjectChange
+      );
+    } catch (historyError) {
+      console.error(
+        "変更履歴の保存に失敗:",
+        historyError
+      );
+
+      alert(
+        "時間割は変更されましたが、" +
+        "変更履歴の保存に失敗しました。\n\n" +
+        historyError.message
+      );
+    }
     // 最新データをGASから再取得
     await renderQuickAdmin();
 
@@ -2428,21 +2449,69 @@ function createManagerId() {
   return `mgr-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function addChangeHistory(classItem, period, subject) {
-  state.data.notifications.unshift({
+async function addChangeHistory(
+  classItem,
+  period,
+  subject
+) {
+  const history = {
     id: `history-${Date.now()}`,
     kind: "history",
+
     title: "時間割変更",
-    range: formatDateForDisplay(state.adminDate),
-    body: `${classItem.label} ${state.data.courses[classItem.course] || ""} ${period}限を「${subject}」に変更しました。`,
-    teacherId: "local-admin",
+
+    display_start:
+      `${state.adminDate}T00:00:00+09:00`,
+
+    display_end:
+      `${state.adminDate}T23:59:59+09:00`,
+
+    body:
+      `${classItem.label} ` +
+      `${state.data.courses[classItem.course] || ""} ` +
+      `${period}限を「${subject || "空欄"}」に変更しました。`,
+
     targets: {
-      grades: [classItem.grade],
-      classes: [classItem.classNo],
+      grades: [String(classItem.grade)],
+      classes: [String(classItem.classNo)],
       courses: [classItem.course]
     }
-  });
-  saveStored(STORAGE_KEYS.notifications, state.data.notifications);
+  };
+
+  const {
+    data,
+    error
+  } = await window.supabaseClient
+    .from("notifications")
+    .insert([history])
+    .select();
+
+  if (error) {
+    console.error(
+      "変更履歴の保存に失敗:",
+      error
+    );
+
+    throw new Error(
+      error.message ||
+      "変更履歴の保存に失敗しました。"
+    );
+  }
+
+  console.log(
+    "変更履歴の保存成功:",
+    data
+  );
+
+  // Supabaseに保存された履歴を
+  // 画面側にも反映
+  if (data?.[0]) {
+    state.data.notifications.unshift(
+      data[0]
+    );
+  }
+
+  renderAdminPosts();
 }
 
 function updateTargetSummary() {
