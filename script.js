@@ -1898,6 +1898,22 @@ async function editChange(classItem, period, existingChange) {
 
   const day = state.adminDay || "月";
 
+  // 変更した日付を日本時間で取得
+  const now = new Date();
+
+  const changeDate =
+    new Intl.DateTimeFormat(
+      "ja-JP",
+      {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }
+    )
+      .format(now)
+      .replaceAll("/", "-");
+    
   try {
     const response = await fetch("/api/timetable-change", {
       method: "POST",
@@ -1998,7 +2014,8 @@ async function editChange(classItem, period, existingChange) {
       await addChangeHistory(
         classItem,
         period,
-        subjectChange
+        subjectChange,
+        changeDate
       );
     } catch (historyError) {
       console.error(
@@ -2452,19 +2469,53 @@ function createManagerId() {
 async function addChangeHistory(
   classItem,
   period,
-  subject
+  subject,
+  changeDate
 ) {
+  const startDate = new Date(
+    `${changeDate}T00:00:00+09:00`
+  );
+
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 7);
+
+  const formatJstDateTime = (date) => {
+    const parts =
+      new Intl.DateTimeFormat(
+        "ja-JP",
+        {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false
+        }
+      ).formatToParts(date);
+
+    const get = (type) =>
+      parts.find(
+        part => part.type === type
+      )?.value;
+
+    return (
+      `${get("year")}-${get("month")}-${get("day")}` +
+      `T${get("hour")}:${get("minute")}:${get("second")}+09:00`
+    );
+  };
+
   const history = {
     id: `history-${Date.now()}`,
     kind: "history",
-
     title: "時間割変更",
 
     display_start:
-      `${state.adminDate}T00:00:00+09:00`,
+      formatJstDateTime(startDate),
 
     display_end:
-      `${state.adminDate}T23:59:59+09:00`,
+      formatJstDateTime(endDate),
 
     body:
       `${classItem.label} ` +
@@ -2503,8 +2554,6 @@ async function addChangeHistory(
     data
   );
 
-  // Supabaseに保存された履歴を
-  // 画面側にも反映
   if (data?.[0]) {
     state.data.notifications.unshift(
       data[0]
