@@ -611,6 +611,14 @@ async function loadAdminProfiles() {
     name.textContent =
       profile.display_name || "表示名未設定";
 
+    const userId =
+      document.createElement("span");
+
+    userId.textContent =
+      profile.user_id
+        ? ` (${profile.user_id.slice(0, 8)}…)`
+        : "";
+
     const deleteButton =
       document.createElement("button");
 
@@ -630,6 +638,7 @@ async function loadAdminProfiles() {
      role,
      separator,
      name,
+     userID,
      deleteButton
    );
 
