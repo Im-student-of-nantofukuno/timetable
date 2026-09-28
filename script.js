@@ -564,7 +564,7 @@ async function loadAdminProfiles() {
 
   const { data, error } = await window.supabaseClient
     .from("admin_profiles")
-    .select("display_name, role");
+    .select("user_id, display_name, role");
 
   if (error) {
     console.error("管理者一覧取得失敗:", error);
@@ -598,36 +598,130 @@ async function loadAdminProfiles() {
   }
 
   state.adminProfiles.forEach((profile) => {
-    const item =
-      document.createElement("li");
+    const item = document.createElement("li");
 
-    const role =
-      document.createElement("span");
-
+    const role = document.createElement("span");
     role.textContent =
       profile.role || "role未設定";
 
-    const separator =
-      document.createElement("span");
+    const separator = document.createElement("span");
+    separator.textContent = " : ";
 
-    separator.textContent =
-      " : ";
-
-    const name =
-      document.createElement("span");
-
+    const name = document.createElement("span");
     name.textContent =
-      profile.display_name ||
-      "表示名未設定";
+      profile.display_name || "表示名未設定";
 
-    item.append(
-      role,
-      separator,
-      name
+    const deleteButton =
+      document.createElement("button");
+
+    deleteButton.type = "button";
+    deleteButton.textContent = "削除";
+    deleteButton.className =
+      "admin-profile-delete";
+
+   deleteButton.addEventListener(
+     "click",
+     () => {
+       deleteAdminProfile(profile);
+     }
+   );
+
+   item.append(
+     role,
+     separator,
+     name,
+     deleteButton
+   );
+
+   list.append(item);
+  });
+}
+
+async function deleteAdminProfile(profile) {
+  if (!profile?.user_id) {
+    alert("削除対象のUser IDが取得できません。");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `${profile.display_name || "この管理者"}を削除しますか？\n\n` +
+    "この操作を行うと、このユーザーは管理画面を利用できなくなります。"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const {
+      data: { session },
+      error: sessionError
+    } = await window.supabaseClient.auth.getSession();
+
+    if (sessionError) {
+      throw new Error(
+        "ログイン状態の確認に失敗しました。"
+      );
+    }
+
+    if (!session) {
+      throw new Error(
+        "ログインしてください。"
+      );
+    }
+
+    const response = await fetch(
+      "/api/admin-profile",
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization":
+            `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          user_id: profile.user_id
+        })
+      }
     );
 
-    list.append(item);
-  });
+    const result =
+      await response.json();
+
+    console.log(
+      "管理者削除結果:",
+      result
+    );
+
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.error ||
+        "管理者の削除に失敗しました。"
+      );
+    }
+
+    alert(
+      `${profile.display_name || "管理者"}を削除しました。`
+    );
+
+    state.adminProfiles = null;
+
+    await loadAdminProfiles();
+
+  } catch (error) {
+    console.error(
+      "管理者削除エラー:",
+      error
+    );
+
+    alert(
+      "管理者の削除に失敗しました。\n\n" +
+      error.message
+    );
+  }
 }
 
 // ========================================
