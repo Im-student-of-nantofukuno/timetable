@@ -263,7 +263,9 @@ $$("[data-view-button]").forEach((button) => {
         setView("student");
       }
       return;
+    });
   });
+    
   $("#logout-button")?.addEventListener("click", handleLogout);
   $("#show-admin-profiles")?.addEventListener("click", loadAdminProfiles);
 
