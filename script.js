@@ -187,82 +187,84 @@ function formatNotificationRange(notification) {
 }
 
 function bindEvents() {
-$$("[data-view-button]").forEach((button) => {
-  button.addEventListener("click", async () => {
-    const targetView = button.dataset.viewButton;
+  $$("[data-view-button]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const targetView = button.dataset.viewButton;
 
-    // 管理者ログインアイコン
-    if (targetView === "login") {
-      const {
-        data: { session },
-        error
-      } = await window.supabaseClient.auth.getSession();
-
-      if (error) {
-        console.error("認証状態の確認に失敗:", error);
-        return;
-      }
-
-      if (!session) {
-        handleGoogleLogin();
-        return;
-      }
-
-     if (state.adminProfile?.role === "admin") {
-       setView("quick-admin");
-       renderQuickAdmin();
-    } else {
-      console.log("管理者権限がありません");
-      setView("student");
-    }
-
-      return;
-    }
-
-    // 浅い管理画面・深い管理画面
-    if (
-      targetView === "quick-admin" ||
-      targetView === "deep-admin"
-    ) {
-      if (
-        state.authenticated &&
-        state.adminProfile?.role === "admin"
-      ) {
-        setView(targetView);
-
-        if (targetView === "quick-admin") {
-          renderQuickAdmin();
-        }
-
-        if (targetView === "deep-admin") {
-          renderDeepAdmin();
-        }
-
-      } else if (!state.authenticated) {
-        handleGoogleLogin();
-      } else {
+      // 管理者ログインアイコン
+      if (targetView === "login") {
         const {
           data: { session },
           error
         } = await window.supabaseClient.auth.getSession();
 
-        if (error || !session) {
-          alert("ログイン状態を確認できませんでした。");
-          setView("student");
+        if (error) {
+          console.error("認証状態の確認に失敗:", error);
           return;
         }
 
-        alert(
-          "管理者として登録されていません。\n\n" +
-          "あなたのユーザーID：\n" +
-          session.user.id +
-          "\n\n" +
-          "このIDを管理者に伝えて、登録してもらってください。"
-        );
-
+        if (!session) {
+          handleGoogleLogin();
+          return;
+        }
+  
+       if (state.adminProfile?.role === "admin") {
+         setView("quick-admin");
+         renderQuickAdmin();
+      } else {
+        console.log("管理者権限がありません");
         setView("student");
       }
-      return;
+
+        return;
+      }
+
+      // 浅い管理画面・深い管理画面
+      if (
+        targetView === "quick-admin" ||
+        targetView === "deep-admin"
+      ) {
+        if (
+          state.authenticated &&
+          state.adminProfile?.role === "admin"
+        ) {
+          setView(targetView);
+
+          if (targetView === "quick-admin") {
+            renderQuickAdmin();
+          }
+
+          if (targetView === "deep-admin") {
+            renderDeepAdmin();
+          }
+
+        } else if (!state.authenticated) {
+          handleGoogleLogin();
+        } else {
+          const {
+            data: { session },
+            error
+          } = await window.supabaseClient.auth.getSession();
+
+          if (error || !session) {
+            alert("ログイン状態を確認できませんでした。");
+            setView("student");
+            return;
+          }
+
+          alert(
+            "管理者として登録されていません。\n\n" +
+            "あなたのユーザーID：\n" +
+            session.user.id +
+            "\n\n" +
+            "このIDを管理者に伝えて、登録してもらってください。"
+          );
+
+          setView("student");
+        }
+        
+        return;
+      }
     });
   });
     
