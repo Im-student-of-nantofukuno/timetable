@@ -394,7 +394,7 @@ function bindEvents() {
   $("#logout-button")?.addEventListener("click", handleLogout);
   $("#add-admin-profile")?.addEventListener(
     "click",
-    showAddAdminProfileDialog
+    //showAddAdminProfileDialog
   );
 
   const studentDaySelect = $("#student-day");
