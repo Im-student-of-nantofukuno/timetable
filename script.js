@@ -1640,7 +1640,11 @@ function renderAdminPosts() {
     card.innerHTML = `
       <button type="button" aria-label="この投稿を削除">×</button>
       <p>${escapeHtml(post.title)}｜${escapeHtml(formatNotificationRange(post))}<br>${escapeHtml(post.body)}</p>
-      <small>${formatTargets(post.targets)}</small>
+      ${
+        post.kind !== "history"
+          ? `<small>${formatTargets(post.targets)}</small>`
+          : ""
+      }
     `;
     $("button", card).addEventListener("click", () => deleteNotification(post.id));
     container.append(card);
