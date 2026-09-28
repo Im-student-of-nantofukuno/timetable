@@ -522,6 +522,14 @@ function bindEvents() {
     input.addEventListener("change", updateTargetSummary);
   });
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
+
+  // ========================================
+  // 管理者追加
+  // ========================================
+  $("#add-admin-profile")?.addEventListener(
+    "click",
+    showAddAdminProfileDialog
+  );
 }
 
   const studentInfoButton =
@@ -545,17 +553,14 @@ function bindEvents() {
   }
 
 async function loadAdminProfiles() {
-  const button = $("#show-admin-profiles");
   const list = $("#admin-profile-list");
 
-  if (!button || !list) return;
+  if (!list) return;
 
+  // すでに取得済みなら再取得しない
   if (state.adminProfiles !== null) {
     return;
   }
-
-  button.disabled = true;
-  button.textContent = "読み込み中…";
 
   const { data, error } = await window.supabaseClient
     .from("admin_profiles")
@@ -563,40 +568,404 @@ async function loadAdminProfiles() {
 
   if (error) {
     console.error("管理者一覧取得失敗:", error);
-    button.disabled = false;
-    button.textContent = "管理者一覧を見る";
-    alert("管理者一覧の取得に失敗しました。");
+
+    list.replaceChildren(
+      createEmptyState(
+        "管理者一覧を取得できませんでした。"
+      )
+    );
+
     return;
   }
 
-  console.log("管理者一覧取得成功:", data);
+  console.log(
+    "管理者一覧取得成功:",
+    data
+  );
 
   state.adminProfiles = data || [];
 
   list.replaceChildren();
 
   if (!state.adminProfiles.length) {
-    list.append(createEmptyState("登録されている管理者はいません。"));
-  } else {
-    state.adminProfiles.forEach((profile) => {
-      const item = document.createElement("li");
+    list.append(
+      createEmptyState(
+        "登録されている管理者はいません。"
+      )
+    );
 
-      const role = document.createElement("span");
-      role.textContent = profile.role || "role未設定";
-
-      const separator = document.createElement("span");
-      separator.textContent = " : ";
-
-      const name = document.createElement("span");
-      name.textContent = profile.display_name || "表示名未設定";
-
-      item.append(role, separator, name);
-      list.append(item);
-    });
+    return;
   }
 
-  list.hidden = false;
-  button.remove();
+  state.adminProfiles.forEach((profile) => {
+    const item =
+      document.createElement("li");
+
+    const role =
+      document.createElement("span");
+
+    role.textContent =
+      profile.role || "role未設定";
+
+    const separator =
+      document.createElement("span");
+
+    separator.textContent =
+      " : ";
+
+    const name =
+      document.createElement("span");
+
+    name.textContent =
+      profile.display_name ||
+      "表示名未設定";
+
+    item.append(
+      role,
+      separator,
+      name
+    );
+
+    list.append(item);
+  });
+}
+
+// ========================================
+// 管理者追加モーダル
+// ========================================
+
+function showAddAdminProfileDialog() {
+  const overlay =
+    document.createElement("div");
+
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  `;
+
+  const dialog =
+    document.createElement("div");
+
+  dialog.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: min(480px, 100%);
+    box-sizing: border-box;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  `;
+
+  dialog.innerHTML = `
+    <h2 style="
+      margin: 0 0 20px;
+      font-size: 1.2rem;
+    ">
+      管理者を追加
+    </h2>
+
+    <div style="margin-bottom: 14px;">
+      <label
+        for="new-admin-user-id"
+        style="
+          display: block;
+          font-weight: bold;
+          margin-bottom: 6px;
+        "
+      >
+        User ID
+      </label>
+
+      <input
+        id="new-admin-user-id"
+        type="text"
+        placeholder="SupabaseのUser ID"
+        style="
+          width: 100%;
+          box-sizing: border-box;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+        "
+      >
+    </div>
+
+    <div style="margin-bottom: 14px;">
+      <label
+        for="new-admin-display-name"
+        style="
+          display: block;
+          font-weight: bold;
+          margin-bottom: 6px;
+        "
+      >
+        表示名
+      </label>
+
+      <input
+        id="new-admin-display-name"
+        type="text"
+        placeholder="例：○○先生"
+        style="
+          width: 100%;
+          box-sizing: border-box;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+        "
+      >
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label
+        for="new-admin-role"
+        style="
+          display: block;
+          font-weight: bold;
+          margin-bottom: 6px;
+        "
+      >
+        権限
+      </label>
+
+      <select
+        id="new-admin-role"
+        style="
+          width: 100%;
+          box-sizing: border-box;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+        "
+      >
+        <option value="quick">
+          quick（浅い管理画面）
+        </option>
+
+        <option value="deep">
+          deep（深い管理画面）
+        </option>
+      </select>
+    </div>
+
+    <div style="
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    ">
+      <button
+        id="cancel-add-admin"
+        type="button"
+        style="
+          padding: 9px 18px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          background: white;
+          cursor: pointer;
+        "
+      >
+        キャンセル
+      </button>
+
+      <button
+        id="submit-add-admin"
+        type="button"
+        style="
+          padding: 9px 18px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+        "
+      >
+        追加する
+      </button>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const userIdInput =
+    dialog.querySelector("#new-admin-user-id");
+
+  const displayNameInput =
+    dialog.querySelector("#new-admin-display-name");
+
+  const roleSelect =
+    dialog.querySelector("#new-admin-role");
+
+  const cancelButton =
+    dialog.querySelector("#cancel-add-admin");
+
+  const submitButton =
+    dialog.querySelector("#submit-add-admin");
+
+  // キャンセル
+  cancelButton.addEventListener(
+    "click",
+    () => {
+      overlay.remove();
+    }
+  );
+
+  // 背景クリック
+  overlay.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === overlay) {
+        overlay.remove();
+      }
+    }
+  );
+
+  // 登録
+  submitButton.addEventListener(
+    "click",
+    async () => {
+
+      const userId =
+        userIdInput.value.trim();
+
+      const displayName =
+        displayNameInput.value.trim();
+
+      const role =
+        roleSelect.value;
+
+      if (!userId) {
+        alert("User IDを入力してください。");
+        userIdInput.focus();
+        return;
+      }
+
+      if (!displayName) {
+        alert("表示名を入力してください。");
+        displayNameInput.focus();
+        return;
+      }
+
+      if (
+        role !== "quick" &&
+        role !== "deep"
+      ) {
+        alert("権限を選択してください。");
+        return;
+      }
+
+      // UUID形式の簡易チェック
+      const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      if (!uuidPattern.test(userId)) {
+        alert(
+          "User IDの形式が正しくありません。\n" +
+          "Supabase Authに表示されるUser IDを確認してください。"
+        );
+        userIdInput.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = "登録中…";
+
+      try {
+
+        // 現在のログインセッションを取得
+        const {
+          data: { session },
+          error: sessionError
+        } =
+          await window.supabaseClient.auth.getSession();
+
+        if (sessionError) {
+          throw new Error(
+            "ログイン状態の確認に失敗しました。"
+          );
+        }
+
+        if (!session) {
+          throw new Error(
+            "ログインしてください。"
+          );
+        }
+
+        // Cloudflare Pages Functionへ送信
+        const response =
+          await fetch(
+            "/api/admin-profile",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization":
+                  `Bearer ${session.access_token}`
+              },
+
+              body: JSON.stringify({
+                user_id: userId,
+                display_name: displayName,
+                role: role
+              })
+            }
+          );
+
+        const result =
+          await response.json();
+
+        console.log(
+          "管理者追加結果:",
+          result
+        );
+
+        if (
+          !response.ok ||
+          !result.success
+        ) {
+          throw new Error(
+            result.error ||
+            "管理者の登録に失敗しました。"
+          );
+        }
+
+        alert(
+          `${displayName} さんを管理者として登録しました。`
+        );
+
+        overlay.remove();
+
+        // 一覧を再取得
+        state.adminProfiles = null;
+
+        await loadAdminProfiles();
+
+      } catch (error) {
+
+        console.error(
+          "管理者追加エラー:",
+          error
+        );
+
+        alert(
+          "管理者の登録に失敗しました。\n\n" +
+          error.message
+        );
+
+        submitButton.disabled = false;
+        submitButton.textContent = "追加する";
+      }
+    }
+  );
+
+  // 最初にUser IDへフォーカス
+  setTimeout(() => {
+    userIdInput.focus();
+  }, 0);
 }
 
 async function handleGoogleLogin() {
