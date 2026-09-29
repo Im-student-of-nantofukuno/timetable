@@ -422,68 +422,220 @@ function bindEvents() {
   // 生徒側プロフィール変更
   // ========================================
 
-  // 学年・組が変わった場合
-  ["#student-grade", "#student-class"].forEach((selector) => {
-    const element = $(selector);
-    if (!element) return;
+  // 学年が変わった場合
+  $("#student-grade")?.addEventListener("change", async () => {
 
-    element.addEventListener("change", async () => {
-      state.profile.grade = $("#student-grade").value;
-      state.profile.classNo = $("#student-class").value;
+    const grade =
+      $("#student-grade").value;
 
-      // 年組が変わったので、まずコース一覧をGASから取得
-      const optionsData = await fetchGasClassOptions(
+    const classControl =
+      $("#student-class")?.closest("label");
+
+    const courseControl =
+      $("#student-course")?.closest("label");
+
+    const teacherControl =
+      $("#student-teacher-control");
+
+    // ========================================
+    // 「先生」が選択された場合
+    // ========================================
+
+    if (grade === "teacher") {
+
+      // 組・コースを非表示
+      if (classControl) {
+        classControl.hidden = true;
+      }
+
+      if (courseControl) {
+        courseControl.hidden = true;
+      }
+
+      // IDを表示
+      if (teacherControl) {
+        teacherControl.hidden = false;
+      }
+
+      // 今回はまだ先生IDの中身を設定しない
+      // （後で実装）
+
+      return;
+    }
+
+    // ========================================
+    // 通常の1～3年が選択された場合
+    // ========================================
+
+    if (classControl) {
+      classControl.hidden = false;
+    }
+
+    if (courseControl) {
+      courseControl.hidden = false;
+    }
+
+    if (teacherControl) {
+      teacherControl.hidden = true;
+    }
+
+    // 通常の生徒プロフィールを更新
+    state.profile.grade = grade;
+    state.profile.classNo =
+      $("#student-class").value;
+
+    // 年組が変わったので、コース一覧をGASから取得
+    const optionsData =
+      await fetchGasClassOptions(
         state.profile.grade,
         state.profile.classNo
       );
 
-      if (!optionsData) {
-        return;
+    if (!optionsData) {
+      return;
+    }
+
+    // 取得したコースを選択欄へ反映
+    updateStudentCourseOptions(
+      optionsData.courses,
+      state.profile.course
+    );
+
+    // 現在選択可能なコースを確認
+    const courseSelect =
+      $("#student-course");
+
+    if (
+      !courseSelect ||
+      !optionsData.courses?.[courseSelect.value]
+    ) {
+
+      const firstCourse =
+        Object.keys(
+          optionsData.courses || {}
+        )[0];
+
+      if (firstCourse) {
+        courseSelect.value =
+          firstCourse;
+
+        state.profile.course =
+          firstCourse;
       }
+  
+    } else {
 
-      // 取得したコースを選択欄へ反映
-      updateStudentCourseOptions(
-        optionsData.courses,
-        state.profile.course
-      );
+      state.profile.course =
+        courseSelect.value;
 
-      // 現在選択可能なコースを確認
-      const courseSelect = $("#student-course");
-
-      if (
-        !courseSelect ||
-        !optionsData.courses?.[courseSelect.value]
-      ) {
-        const firstCourse =
-          Object.keys(optionsData.courses || {})[0];
-
-        if (firstCourse) {
-          courseSelect.value = firstCourse;
-          state.profile.course = firstCourse;
-        }
-      } else {
-        state.profile.course = courseSelect.value;
-      }
-
-      saveStored(STORAGE_KEYS.profile, state.profile);
-
-      await renderStudent();
-    });
-  });
-
-  // コースだけが変わった場合
-  $("#student-course")?.addEventListener("change", () => {
-    state.profile.course =
-      $("#student-course").value;
+    }
 
     saveStored(
       STORAGE_KEYS.profile,
       state.profile
     );
 
-    // ★ここではGASを呼ばない
-    renderStudent();
+    await renderStudent();
   });
+
+
+  // ========================================
+  // 組が変わった場合
+  // ========================================
+
+  $("#student-class")?.addEventListener(
+    "change",
+    async () => {
+
+      // 先生モードでは何もしない
+      if (
+        $("#student-grade")?.value ===
+        "teacher"
+      ) {
+        return;
+      }
+
+      state.profile.grade =
+        $("#student-grade").value;
+
+      state.profile.classNo =
+        $("#student-class").value;
+
+      const optionsData =
+        await fetchGasClassOptions(
+          state.profile.grade,
+          state.profile.classNo
+        );
+
+      if (!optionsData) {
+        return;
+      }
+
+      updateStudentCourseOptions(
+        optionsData.courses,
+        state.profile.course
+      );
+
+      const courseSelect =
+        $("#student-course");
+
+      if (
+        !courseSelect ||
+        !optionsData.courses?.[
+          courseSelect.value
+        ]
+      ) {
+
+        const firstCourse =
+          Object.keys(
+            optionsData.courses || {}
+          )[0];
+
+        if (firstCourse) {
+          courseSelect.value =
+            firstCourse;
+
+          state.profile.course =
+            firstCourse;
+        }
+
+      } else {
+  
+        state.profile.course =
+          courseSelect.value;
+
+      }
+
+      saveStored(
+        STORAGE_KEYS.profile,
+        state.profile
+      );
+  
+      await renderStudent();
+    }
+  );
+
+
+  // ========================================
+  // コースだけが変わった場合
+  // ========================================
+
+  $("#student-course")?.addEventListener(
+    "change",
+    () => {
+
+      state.profile.course =
+        $("#student-course").value;
+
+      saveStored(
+        STORAGE_KEYS.profile,
+        state.profile
+      );
+
+      // ★ここではGASを呼ばない
+      renderStudent();
+    }
+  );
 
   $("#admin-grade")?.addEventListener("change", renderQuickAdmin);
   $("#admin-day")?.addEventListener("change", () => {
