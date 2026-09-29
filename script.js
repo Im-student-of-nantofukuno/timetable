@@ -211,129 +211,133 @@ function bindEvents() {
           return;
         }
   
-       if (
-         state.adminProfile?.role === "quick" ||
-         state.adminProfile?.role === "deep"
-       ) {
-         setView("quick-admin");
-         renderQuickAdmin();
-       } else {
-               
-         //モーダル
-         const userId = session.user.id;
+        if (
+          state.adminProfile?.role === "quick" ||
+          state.adminProfile?.role === "deep"
+        ) {
+          setView("quick-admin");
+          renderQuickAdmin();
+        }else if(
+          state.adminProfile?.role === "user" ||
+        ) {
+          alert("あなたの権限では、管理画面に入れません。\n管理者登録を再度行ってください")
+        }else {
+                
+          //モーダル
+          const userId = session.user.id;
 
-         const modal = document.createElement("div");
-         modal.style.cssText = `
-           position: fixed;
-           inset: 0;
-           background: rgba(0, 0, 0, 0.45);
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           z-index: 9999;
-           padding: 20px;
-         `;
+          const modal = document.createElement("div");
+          modal.style.cssText = `
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+          `;
 
-         const dialog = document.createElement("div");
-         dialog.style.cssText = `
-           background: white;
-           border-radius: 12px;
-           padding: 24px;
-           width: min(420px, 100%);
-           box-sizing: border-box;
-           box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-         `;
+          const dialog = document.createElement("div");
+          dialog.style.cssText = `
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: min(420px, 100%);
+            box-sizing: border-box;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+          `;
 
-         dialog.innerHTML = `
-           <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 16px;">
-             管理者として登録されていません。
-           </div>
+          dialog.innerHTML = `
+            <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 16px;">
+              管理者として登録されていません。
+            </div>
 
-           <div style="margin-bottom: 12px; line-height: 1.6;">
-             下記のユーザーIDを用いて、他の管理者に管理者登録してもらってください。
-           </div>
+            <div style="margin-bottom: 12px; line-height: 1.6;">
+              下記のユーザーIDを用いて、他の管理者に管理者登録してもらってください。
+            </div>
+ 
+            <div style="margin-bottom: 6px; font-weight: bold;">
+              あなたのユーザーID：
+            </div>
+ 
+            <input
+              type="text"
+              value="${userId}"
+              readonly
+              style="
+                width: 100%;
+                box-sizing: border-box;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                font-size: 0.9rem;
+                margin-bottom: 16px;
+              "
+            >
 
-           <div style="margin-bottom: 6px; font-weight: bold;">
-             あなたのユーザーID：
-           </div>
+            <button
+              id="copy-user-id"
+              type="button"
+              style="
+                display: block;
+                margin: 0 auto 10px;
+                padding: 9px 22px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              IDをコピー
+            </button>
 
-           <input
-             type="text"
-             value="${userId}"
-             readonly
-             style="
-               width: 100%;
-               box-sizing: border-box;
-               padding: 10px;
-               border: 1px solid #ccc;
-               border-radius: 6px;
-               font-size: 0.9rem;
-               margin-bottom: 16px;
-             "
-           >
-
-           <button
-             id="copy-user-id"
-             type="button"
-             style="
-               display: block;
-               margin: 0 auto 10px;
-               padding: 9px 22px;
-               border: none;
-               border-radius: 6px;
-               cursor: pointer;
-             "
-           >
-             IDをコピー
-           </button>
-
-           <button
-             id="close-user-id-modal"
-             type="button"
-             style="
-               display: block;
-               margin: 0 auto;
-               padding: 9px 22px;
-               border: none;
-               border-radius: 6px;
-               cursor: pointer;
-             "
-           >
-             閉じる
-           </button>
-         `;
-
-         modal.appendChild(dialog);
-         document.body.appendChild(modal);
-
-         const copyButton = dialog.querySelector("#copy-user-id");
-         const closeButton = dialog.querySelector("#close-user-id-modal");
-
-         copyButton.addEventListener("click", async () => {
-           try {
-             await navigator.clipboard.writeText(userId);
-
-             copyButton.textContent = "コピーしました！";
-
-             setTimeout(() => {
-               copyButton.textContent = "IDをコピー";
-             }, 1500);
-
-           } catch (error) {
-             console.error("ユーザーIDのコピーに失敗:", error);
-             alert("コピーに失敗しました。ユーザーIDを手動でコピーしてください。");
-           }
-         });
-
-         closeButton.addEventListener("click", () => {
-           modal.remove();
-         });
-         //ここまでモーダル
-               
-         setView("student");
+            <button
+              id="close-user-id-modal"
+              type="button"
+              style="
+                display: block;
+                margin: 0 auto;
+                padding: 9px 22px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              閉じる
+            </button>
+          `;
+          
+          modal.appendChild(dialog);
+          document.body.appendChild(modal);
+ 
+          const copyButton = dialog.querySelector("#copy-user-id");
+          const closeButton = dialog.querySelector("#close-user-id-modal");
+ 
+          copyButton.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(userId);
+ 
+              copyButton.textContent = "コピーしました！";
+ 
+              setTimeout(() => {
+                copyButton.textContent = "IDをコピー";
+              }, 1500);
+ 
+            } catch (error) {
+              console.error("ユーザーIDのコピーに失敗:", error);
+              alert("コピーに失敗しました。ユーザーIDを手動でコピーしてください。");
+            }
+          });
+          
+          closeButton.addEventListener("click", () => {
+            modal.remove();
+          });
+        //ここまでモーダル
+        
+        setView("student");
       }
-
-        return;
+      
+      return;
       }
         
       // 生徒画面
@@ -342,7 +346,7 @@ function bindEvents() {
         renderStudent();
         return;
       }
-        
+         
       // 浅い管理画面・深い管理画面
       if (
         targetView === "quick-admin" ||
@@ -354,7 +358,7 @@ function bindEvents() {
         }
 
         const role = state.adminProfile?.role;
-
+        
         // 深い管理画面は deep のみ
         if (
           targetView === "deep-admin" &&
@@ -363,9 +367,9 @@ function bindEvents() {
           alert("深い管理画面を利用する権限がありません。");
           setView("student");
           return;
-        }
-
-        // 浅い管理画面は quick / deep
+        } 
+         
+         // 浅い管理画面は quick / deep
         if (
           targetView === "quick-admin" &&
           role !== "quick" &&
@@ -375,14 +379,14 @@ function bindEvents() {
           setView("student");
           return;
         }
-
+         
         setView(targetView);
-
+ 
         if (targetView === "quick-admin") {
           renderQuickAdmin();
         }
-
-        if (targetView === "deep-admin") {
+ 
+         if (targetView === "deep-admin") {
           renderDeepAdmin();
         }
           
@@ -413,14 +417,14 @@ function bindEvents() {
       studentDaySelect.value = todayName;
     }
   }
-    
+   
   $("#student-day")?.addEventListener("change", () => {
     renderStudent();
   });
-    
-  // ========================================
-  // 生徒側プロフィール変更
-  // ========================================
+
+   // ========================================
+   // 生徒側プロフィール変更
+   // ========================================
 
   // 学年が変わった場合
   $("#student-grade")?.addEventListener("change", async () => {
