@@ -1011,10 +1011,14 @@ function showAddAdminProfileDialog() {
           border-radius: 6px;
         "
       >
+        <option value="user">
+          user（見る専用）
+        </option>
+
         <option value="quick">
           quick（浅い管理画面）
         </option>
-
+        
         <option value="deep">
           deep（深い管理画面）
         </option>
