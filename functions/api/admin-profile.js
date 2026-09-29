@@ -168,14 +168,15 @@ export async function onRequestPost(context) {
     }
 
     if (
+      role !== "user" &&
       role !== "quick" &&
-      role !== "deep"
+      role !== "deep" 
     ) {
       return jsonResponse(
         {
           success: false,
           error:
-            "roleはquickまたはdeepを指定してください"
+            "roleはquickかdeep、userを指定してください"
         },
         400
       );
