@@ -1122,6 +1122,7 @@ function showAddAdminProfileDialog() {
       }
 
       if (
+        role !== "user" &&
         role !== "quick" &&
         role !== "deep"
       ) {
