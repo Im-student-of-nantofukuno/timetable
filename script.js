@@ -218,7 +218,7 @@ function bindEvents() {
           setView("quick-admin");
           renderQuickAdmin();
         }else if(
-          state.adminProfile?.role === "user" ||
+          state.adminProfile?.role === "user"
         ) {
           alert("あなたの権限では、管理画面に入れません。\n管理者登録を再度行ってください")
         }else {
