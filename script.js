@@ -779,6 +779,52 @@ async function loadTeacherOptions() {
   });
 }
 
+function setupTeacherSearch() {
+  const searchInput =
+    document.getElementById("student-teacher-search");
+
+  const teacherSelect =
+    document.getElementById("student-teacher");
+
+  if (!searchInput || !teacherSelect) {
+    return;
+  }
+
+  searchInput.addEventListener("input", () => {
+    const keyword =
+      searchInput.value.trim().toLowerCase();
+
+    const currentValue =
+      teacherSelect.value;
+
+    Array.from(
+      teacherSelect.options
+    ).forEach((option) => {
+      if (!option.value) {
+        option.hidden = false;
+        return;
+      }
+
+      const text =
+        option.textContent.toLowerCase();
+
+      option.hidden =
+        keyword !== "" &&
+        !text.includes(keyword);
+    });
+
+    // 現在選択中の先生は検索結果から消さない
+    const selectedOption =
+      teacherSelect.querySelector(
+        `option[value="${CSS.escape(currentValue)}"]`
+      );
+
+    if (selectedOption) {
+      selectedOption.hidden = false;
+    }
+  });
+}
+
 async function loadAdminProfiles() {
   const list = $("#admin-profile-list");
 
