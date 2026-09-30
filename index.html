@@ -62,16 +62,58 @@
           >
             <span>ID:</span>
 
-            <input
-              type="search"
-              id="student-teacher-search"
-              placeholder="先生を検索"
-              autocomplete="off"
-            >
+            <div class="teacher-picker" id="teacher-picker">
 
-            <select id="student-teacher" name="teacher">
-              <option value="">選択してください</option>
-            </select>
+              <!-- 現在の選択内容 -->
+              <button
+                type="button"
+                class="teacher-picker-button"
+                id="teacher-picker-button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+              >
+                <span id="teacher-picker-label">
+                  選択してください
+                </span>
+                <span class="teacher-picker-arrow">▼</span>
+              </button>
+
+              <!-- プルダウン本体 -->
+              <div
+                class="teacher-picker-menu"
+                id="teacher-picker-menu"
+                hidden
+              >
+
+                <!-- 検索欄 -->
+                <div class="teacher-picker-search">
+                  <input
+                    type="search"
+                    id="teacher-picker-search"
+                    placeholder="先生を検索..."
+                    autocomplete="off"
+                  >
+                </div>
+
+                <!-- 候補一覧 -->
+                <div
+                  class="teacher-picker-options"
+                  id="teacher-picker-options"
+                  role="listbox"
+                ></div>
+
+              </div>
+
+              <!-- 既存JSとの互換用 -->
+              <select
+                id="student-teacher"
+                name="teacher"
+                hidden
+              >
+                <option value="">選択してください</option>
+              </select>
+
+            </div>
           </label>
         </section>
 
