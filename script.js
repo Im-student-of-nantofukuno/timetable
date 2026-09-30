@@ -422,6 +422,9 @@ function bindEvents() {
   $("#student-day")?.addEventListener("change", () => {
     renderStudent();
   });
+
+  //先生の検索の初期化
+  setupTeacherPicker();
     
    // ========================================
    // 生徒側プロフィール変更
@@ -687,26 +690,6 @@ function bindEvents() {
     input.addEventListener("change", updateTargetSummary);
   });
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
-
-  // ========================================
-  // 先生IDが変わった場合
-  // ========================================
-
-  $("#student-teacher")?.addEventListener(
-    "change",
-    async () => {
-
-      state.profile.teacherId =
-        $("#student-teacher").value;
-
-      saveStored(
-        STORAGE_KEYS.profile,
-        state.profile
-      );
-
-      await renderStudent();
-    }
-  );
   
   // ========================================
   // 管理者追加
@@ -738,45 +721,341 @@ function bindEvents() {
   }
 
 async function loadTeacherOptions() {
-  const select = $("#student-teacher");
+  const select =
+    $("#student-teacher");
 
-  if (!select) return;
+  const optionsContainer =
+    $("#teacher-picker-options");
 
-  const { data, error } = await window.supabaseClient
-    .from("admin_profiles")
-    .select("user_id, display_name")
-    .order("display_name", { ascending: true });
+  if (!select || !optionsContainer) {
+    return;
+  }
+
+  const { data, error } =
+    await window.supabaseClient
+      .from("admin_profiles")
+      .select("user_id, display_name")
+      .order("display_name", {
+        ascending: true
+      });
 
   if (error) {
-    console.error("先生一覧取得失敗:", error);
+    console.error(
+      "先生一覧取得失敗:",
+      error
+    );
 
     select.replaceChildren(
-      new Option("取得できませんでした", "")
+      new Option(
+        "取得できませんでした",
+        ""
+      )
     );
+
+    optionsContainer.replaceChildren();
+
+    const empty =
+      document.createElement("div");
+
+    empty.className =
+      "teacher-picker-empty";
+
+    empty.textContent =
+      "取得できませんでした";
+
+    optionsContainer.appendChild(empty);
 
     return;
   }
 
+  // ========================================
+  // 既存selectを更新
+  // ========================================
+
   select.replaceChildren(
-    new Option("選択してください", "")
+    new Option(
+      "選択してください",
+      ""
+    )
   );
 
+  // ========================================
+  // カスタム候補一覧を作成
+  // ========================================
+
+  optionsContainer.replaceChildren();
+
   (data || []).forEach((profile) => {
-    if (!profile.user_id) return;
+    if (!profile.user_id) {
+      return;
+    }
 
     const displayName =
-      profile.display_name || "表示名未設定";
+      profile.display_name ||
+      "表示名未設定";
 
     const shortId =
       `${profile.user_id.slice(0, 8)}…`;
 
-    const option = new Option(
-      `${displayName} (${shortId})`,
-      profile.user_id
-    );
+    const label =
+      `${displayName} (${shortId})`;
+
+    // 既存select
+    const option =
+      new Option(
+        label,
+        profile.user_id
+      );
 
     select.appendChild(option);
+
+    // カスタム候補
+    const button =
+      document.createElement("button");
+
+    button.type = "button";
+
+    button.className =
+      "teacher-picker-option";
+
+    button.dataset.value =
+      profile.user_id;
+
+    button.dataset.searchText =
+      label.toLowerCase();
+
+    button.textContent =
+      label;
+
+    button.addEventListener(
+      "click",
+      async () => {
+
+        select.value =
+          profile.user_id;
+
+        state.profile.teacherId =
+          profile.user_id;
+
+        saveStored(
+          STORAGE_KEYS.profile,
+          state.profile
+        );
+
+        updateTeacherPickerLabel();
+
+        closeTeacherPicker();
+
+        await renderStudent();
+      }
+    );
+
+    optionsContainer.appendChild(button);
   });
+
+  updateTeacherPickerLabel();
+}
+
+// ========================================
+// 先生選択プルダウン
+// ========================================
+
+function openTeacherPicker() {
+  const menu =
+    $("#teacher-picker-menu");
+
+  const button =
+    $("#teacher-picker-button");
+
+  if (!menu || !button) {
+    return;
+  }
+
+  menu.hidden = false;
+
+  button.setAttribute(
+    "aria-expanded",
+    "true"
+  );
+
+  const search =
+    $("#teacher-picker-search");
+
+  search?.focus();
+}
+
+
+function closeTeacherPicker() {
+  const menu =
+    $("#teacher-picker-menu");
+
+  const button =
+    $("#teacher-picker-button");
+
+  if (!menu || !button) {
+    return;
+  }
+
+  menu.hidden = true;
+
+  button.setAttribute(
+    "aria-expanded",
+    "false"
+  );
+}
+
+
+function updateTeacherPickerLabel() {
+  const select =
+    $("#student-teacher");
+
+  const label =
+    $("#teacher-picker-label");
+
+  if (!select || !label) {
+    return;
+  }
+
+  const selected =
+    select.options[
+      select.selectedIndex
+    ];
+
+  label.textContent =
+    selected?.textContent ||
+    "選択してください";
+
+  // 選択状態を候補側にも反映
+  $$(".teacher-picker-option")
+    .forEach((option) => {
+
+      option.classList.toggle(
+        "is-selected",
+        option.dataset.value ===
+          select.value
+      );
+    });
+}
+
+
+function filterTeacherOptions() {
+  const search =
+    $("#teacher-picker-search");
+
+  if (!search) {
+    return;
+  }
+
+  const keyword =
+    search.value
+      .trim()
+      .toLowerCase();
+
+  let visibleCount = 0;
+
+  $$(".teacher-picker-option")
+    .forEach((option) => {
+
+      const text =
+        option.dataset.searchText || "";
+
+      const matched =
+        !keyword ||
+        text.includes(keyword);
+
+      option.hidden =
+        !matched;
+
+      if (matched) {
+        visibleCount++;
+      }
+    });
+
+  const optionsContainer =
+    $("#teacher-picker-options");
+
+  if (!optionsContainer) {
+    return;
+  }
+
+  let empty =
+    optionsContainer.querySelector(
+      ".teacher-picker-empty"
+    );
+
+  if (visibleCount === 0) {
+
+    if (!empty) {
+      empty =
+        document.createElement("div");
+
+      empty.className =
+        "teacher-picker-empty";
+
+      optionsContainer.appendChild(
+        empty
+      );
+    }
+
+    empty.textContent =
+      "該当する先生がいません。";
+
+  } else if (empty) {
+    empty.remove();
+  }
+}
+
+
+function setupTeacherPicker() {
+  const button =
+    $("#teacher-picker-button");
+
+  const search =
+    $("#teacher-picker-search");
+
+  const picker =
+    $("#teacher-picker");
+
+  if (!button || !search || !picker) {
+    return;
+  }
+
+  // 開閉
+  button.addEventListener(
+    "click",
+    () => {
+
+      const menu =
+        $("#teacher-picker-menu");
+
+      if (!menu) {
+        return;
+      }
+
+      if (menu.hidden) {
+        openTeacherPicker();
+      } else {
+        closeTeacherPicker();
+      }
+    }
+  );
+
+  // 検索
+  search.addEventListener(
+    "input",
+    filterTeacherOptions
+  );
+
+  // 外側をクリックしたら閉じる
+  document.addEventListener(
+    "click",
+    (event) => {
+
+      if (!picker.contains(event.target)) {
+        closeTeacherPicker();
+      }
+    }
+  );
 }
 
 function setupTeacherSearch() {
@@ -1655,6 +1934,8 @@ async function renderStudent() {
       "#student-teacher",
       state.profile.teacherId || ""
     );
+
+    updateTeacherPickerLabel();
 
     await renderTeacherTimetable();
 
