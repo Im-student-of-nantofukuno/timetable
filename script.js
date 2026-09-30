@@ -42,6 +42,7 @@ const state = {
     gasClassOptionsCache: {},
     gasAdminTimetableCache: {},
     gasAllSubjectsCache: null,
+    gasTeacherTimetableCache: {},
   }
 };
 
@@ -1381,15 +1382,32 @@ function setView(viewName) {
 // 先生の時間割をGASから取得
 // ========================================
 
-async function fetchTeacherDayTimetable(
-  teacherId,
-  day
-) {
-  if (!teacherId) {
+async function fetchTeacherDayTimetable(teacherId, day) {
+  if (!teacherId) return null;
+
+  const targetTeacherId = String(teacherId).trim();
+  const targetDay = String(day).trim();
+
+  if (!targetTeacherId || !targetDay) {
     return null;
   }
 
-  // 現在のログインセッションを取得
+  // ブラウザキャッシュ確認
+  const cacheKey =
+    `${targetTeacherId}_${targetDay}`;
+
+  const cached =
+    state.data.gasTeacherTimetableCache?.[cacheKey];
+
+  if (cached) {
+    console.log(
+      "先生時間割：ブラウザキャッシュ使用:",
+      cacheKey
+    );
+
+    return cached;
+  }
+
   const {
     data: { session },
     error: sessionError
@@ -1400,7 +1418,6 @@ async function fetchTeacherDayTimetable(
       "先生時間割：認証状態の取得に失敗:",
       sessionError
     );
-
     return null;
   }
 
@@ -1408,73 +1425,78 @@ async function fetchTeacherDayTimetable(
     console.error(
       "先生時間割：ログインしていません"
     );
-
     return null;
   }
 
-  const params =
-    new URLSearchParams();
+  const params = new URLSearchParams();
 
   params.set(
     "teacher_id",
-    teacherId
+    targetTeacherId
   );
 
   params.set(
     "day",
-    day
+    targetDay
   );
 
   try {
+    console.log(
+      "先生時間割：GASへ取得:",
+      cacheKey
+    );
 
-    const response =
-      await fetch(
-        `/api/timetable?${params.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization:
-              `Bearer ${session.access_token}`
-          }
+    const response = await fetch(
+      `/api/timetable?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization:
+            `Bearer ${session.access_token}`
         }
-      );
+      }
+    );
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
     console.log(
       "先生時間割取得結果:",
       data
     );
 
-    if (
-      !response.ok ||
-      !data.success
-    ) {
+    if (!response.ok || !data.success) {
       console.error(
         "先生時間割取得失敗:",
         data
       );
-
       return null;
     }
+      
+    // 取得成功 → ブラウザキャッシュへ保存
+    if (!state.data.gasTeacherTimetableCache) {
+      state.data.gasTeacherTimetableCache = {};
+    }
+
+    state.data.gasTeacherTimetableCache[cacheKey] =
+      data.data;
+
+    console.log(
+      "先生時間割：ブラウザキャッシュ保存:",
+      cacheKey
+    );
 
     return data.data;
 
   } catch (error) {
-
     console.error(
       "先生時間割取得エラー:",
       error
     );
-
     return null;
   }
 }
 
-// ========================================
 // 先生時間割を画面へ描画
-// ========================================
 
 async function renderTeacherTimetable() {
 
@@ -1524,9 +1546,7 @@ async function renderTeacherTimetable() {
     data.timetable || [];
 
 
-  // ========================================
   // 1～7限を描画
-  // ========================================
 
   $$(".period-subject").forEach(
     (subjectNode) => {
@@ -1574,9 +1594,7 @@ async function renderTeacherTimetable() {
 
 async function renderStudent() {
 
-  // ========================================
   // 先生モード
-  // ========================================
 
   if (
     state.profile.grade === "teacher"
@@ -1599,11 +1617,7 @@ async function renderStudent() {
     return;
   }
 
-
-  // ========================================
   // 通常の生徒モード
-  // ========================================
-
   ensureValidStudentProfile();
 
   setSelectValue(
@@ -1658,9 +1672,7 @@ async function renderStudent() {
     optionsData
   );
 
-  // ========================================
   // GAS取得失敗
-  // ========================================
 
   if (!optionsData) {
 
@@ -1680,28 +1692,21 @@ async function renderStudent() {
 
     return;
   }
-
-  // ========================================
   // コース選択欄をJSONに合わせる
-  // ========================================
 
   updateStudentCourseOptions(
     optionsData.courses,
     state.profile.course
   );
 
-  // ========================================
   // 現在選択されているコースのデータを取得
-  // ========================================
 
   let gasData =
     optionsData.courses?.[
       state.profile.course
     ];
 
-  // ========================================
   // 現在のコースが存在しない場合
-  // ========================================
 
   if (!gasData) {
 
@@ -1761,9 +1766,7 @@ async function renderStudent() {
     gasData
   );
   
-  // ========================================
   // 今日の曜日を取得 2日以上先なら警告
-  // ========================================
  
   const selectedDay =
     document.getElementById("student-day")?.value || "月";
@@ -1817,9 +1820,7 @@ async function renderStudent() {
   
   const subjectMap = {};
   
-  // ========================================
   // subjectsを検索しやすい形にする
-  // ========================================
 
   (gasData.subjects || []).forEach(
     (subject) => {
@@ -1830,10 +1831,7 @@ async function renderStudent() {
     }
   );
 
-
-  // ========================================
   // 各時限を表示
-  // ========================================
 
   $$(".period-subject").forEach(
     (subjectNode) => {
@@ -1868,9 +1866,7 @@ async function renderStudent() {
       let displayName = "";
 
 
-      // ====================================
       // jointの場合
-      // ====================================
 
       if (timetableItem.joint) {
 
@@ -1879,9 +1875,7 @@ async function renderStudent() {
 
       }
 
-      // ====================================
       // 通常授業の場合
-      // ====================================
 
       else {
 
@@ -1897,10 +1891,7 @@ async function renderStudent() {
       subjectNode.textContent =
         displayName;
 
-
-      // ====================================
       // subject_changeがあった場合
-      // ====================================
 
       subjectNode
         .closest("li")
