@@ -417,10 +417,30 @@ function bindEvents() {
       studentDaySelect.value = todayName;
     }
   }
-   
+
   $("#student-day")?.addEventListener("change", () => {
     renderStudent();
   });
+
+  // ========================================
+  // 先生選択
+  // ========================================
+
+  $("#student-teacher")?.addEventListener(
+    "change",
+    async () => {
+
+      state.profile.teacherId =
+        $("#student-teacher").value;
+
+      saveStored(
+        STORAGE_KEYS.profile,
+        state.profile
+      );
+
+      await renderStudent();
+    }
+  );
 
    // ========================================
    // 生徒側プロフィール変更
@@ -431,13 +451,13 @@ function bindEvents() {
 
     const grade =
       $("#student-grade").value;
-
+    
     const classControl =
       $("#student-class")?.closest("label");
-
+    
     const courseControl =
       $("#student-course")?.closest("label");
-
+    
     const teacherControl =
       $("#student-teacher-control");
 
@@ -451,10 +471,18 @@ function bindEvents() {
       if (classControl) {
         classControl.hidden = true;
       }
-
       if (courseControl) {
         courseControl.hidden = true;
       }
+
+      state.profile.grade = "teacher";
+      state.profile.classNo = "";
+      state.profile.course = "";
+
+      saveStored(
+        STORAGE_KEYS.profile,
+        state.profile
+      );
 
       // IDを表示
       if (teacherControl) {
@@ -462,6 +490,7 @@ function bindEvents() {
       }
 
       await loadTeacherOptions();
+      await renderStudent();
 
       return;
     }
@@ -678,6 +707,26 @@ function bindEvents() {
   });
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
 
+  // ========================================
+  // 先生IDが変わった場合
+  // ========================================
+
+  $("#student-teacher")?.addEventListener(
+    "change",
+    async () => {
+
+      state.profile.teacherId =
+        $("#student-teacher").value;
+
+      saveStored(
+        STORAGE_KEYS.profile,
+        state.profile
+      );
+
+      await renderStudent();
+    }
+  );
+  
   // ========================================
   // 管理者追加
   // ========================================
@@ -1348,9 +1397,234 @@ function setView(viewName) {
   });
 }
 
+// ========================================
+// 先生の時間割をGASから取得
+// ========================================
+
+async function fetchTeacherDayTimetable(
+  teacherId,
+  day
+) {
+  if (!teacherId) {
+    return null;
+  }
+
+  // 現在のログインセッションを取得
+  const {
+    data: { session },
+    error: sessionError
+  } = await window.supabaseClient.auth.getSession();
+
+  if (sessionError) {
+    console.error(
+      "先生時間割：認証状態の取得に失敗:",
+      sessionError
+    );
+
+    return null;
+  }
+
+  if (!session) {
+    console.error(
+      "先生時間割：ログインしていません"
+    );
+
+    return null;
+  }
+
+  const params =
+    new URLSearchParams();
+
+  params.set(
+    "teacher_id",
+    teacherId
+  );
+
+  params.set(
+    "day",
+    day
+  );
+
+  try {
+
+    const response =
+      await fetch(
+        `/api/timetable?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization:
+              `Bearer ${session.access_token}`
+          }
+        }
+      );
+
+    const data =
+      await response.json();
+
+    console.log(
+      "先生時間割取得結果:",
+      data
+    );
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+      console.error(
+        "先生時間割取得失敗:",
+        data
+      );
+
+      return null;
+    }
+
+    return data.data;
+
+  } catch (error) {
+
+    console.error(
+      "先生時間割取得エラー:",
+      error
+    );
+
+    return null;
+  }
+}
+
+// ========================================
+// 先生時間割を画面へ描画
+// ========================================
+
+async function renderTeacherTimetable() {
+
+  const teacherId =
+    state.profile.teacherId;
+
+  const selectedDay =
+    document.getElementById(
+      "student-day"
+    )?.value || "月";
+
+
+  // いったん全時限を空にする
+  $$(
+    ".period-subject"
+  ).forEach((subjectNode) => {
+
+    subjectNode.textContent = "";
+
+    subjectNode
+      .closest("li")
+      ?.classList.remove(
+        "is-changed"
+      );
+
+  });
+
+
+  if (!teacherId) {
+    return;
+  }
+
+
+  const data =
+    await fetchTeacherDayTimetable(
+      teacherId,
+      selectedDay
+    );
+
+
+  if (!data) {
+    return;
+  }
+
+
+  const timetable =
+    data.timetable || [];
+
+
+  // ========================================
+  // 1～7限を描画
+  // ========================================
+
+  $$(".period-subject").forEach(
+    (subjectNode) => {
+
+      const period =
+        Number(
+          subjectNode.dataset.period
+        );
+
+
+      const periodData =
+        timetable.find(
+          (item) =>
+            Number(item.period) ===
+            period
+        );
+
+
+      if (
+        !periodData ||
+        !periodData.subjects?.length
+      ) {
+
+        subjectNode.textContent = "";
+
+        return;
+      }
+
+
+      // 同じ時限に複数クラスを担当している場合
+      const names =
+        periodData.subjects
+          .map(
+            (item) =>
+              item.subject_name || ""
+          )
+          .filter(Boolean);
+
+
+      subjectNode.textContent =
+        names.join(" / ");
+    }
+  );
+}
+
 async function renderStudent() {
 
-    ensureValidStudentProfile();
+  // ========================================
+  // 先生モード
+  // ========================================
+
+  if (
+    state.profile.grade === "teacher"
+  ) {
+
+    setSelectValue(
+      "#student-grade",
+      "teacher"
+    );
+
+    setSelectValue(
+      "#student-teacher",
+      state.profile.teacherId || ""
+    );
+
+    await renderTeacherTimetable();
+
+    renderStudentNotices();
+
+    return;
+  }
+
+
+  // ========================================
+  // 通常の生徒モード
+  // ========================================
+
+  ensureValidStudentProfile();
 
   setSelectValue(
     "#student-grade",
