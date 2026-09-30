@@ -6,6 +6,26 @@ export async function onRequestGet(context) {
     
     // ブラウザから送られたGETパラメータを取得 
     const params = requestUrl.searchParams;
+
+    const teacherId = params.get("teacher_id");
+
+    if (teacherId) {
+      const authResult =
+        await authenticateRegisteredUser(
+          request,
+          env
+        );
+
+      if (!authResult.success) {
+        return jsonResponse(
+          {
+            success: false,
+            error: authResult.error
+          },
+          authResult.status
+        );
+      }
+    }
     
     // GASへそのまま転送するURLを作る
     const gasUrl = new URL(env.GAS_API_URL);
@@ -60,6 +80,107 @@ export async function onRequestGet(context) {
       500
     );
   }
+}
+
+async function authenticateRegisteredUser(request, env) {
+  const authorization =
+    request.headers.get("Authorization");
+
+  if (!authorization) {
+    return {
+      success: false,
+      status: 401,
+      error: "ログインが必要です"
+    };
+  }
+
+  const match =
+    authorization.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    return {
+      success: false,
+      status: 401,
+      error: "認証情報が正しくありません"
+    };
+  }
+
+  const accessToken = match[1];
+
+  // Supabase Authでアクセストークンを確認
+  const userResponse = await fetch(
+    `${env.SUPABASE_URL}/auth/v1/user`,
+    {
+      method: "GET",
+      headers: {
+        apikey: env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  if (!userResponse.ok) {
+    return {
+      success: false,
+      status: 401,
+      error: "ログイン状態を確認できません"
+    };
+  }
+
+  const user = await userResponse.json();
+
+  if (!user?.id) {
+    return {
+      success: false,
+      status: 401,
+      error: "ユーザー情報を取得できません"
+    };
+  }
+
+  // admin_profiles に登録されているか確認
+  const profileResponse = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/admin_profiles` +
+    `?user_id=eq.${encodeURIComponent(user.id)}` +
+    `&select=user_id,role`,
+    {
+      method: "GET",
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization:
+          `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+      }
+    }
+  );
+
+  if (!profileResponse.ok) {
+    console.error(
+      "admin_profiles確認失敗:",
+      profileResponse.status
+    );
+
+    return {
+      success: false,
+      status: 500,
+      error: "権限情報を確認できません"
+    };
+  }
+
+  const profiles =
+    await profileResponse.json();
+
+  if (!Array.isArray(profiles) || !profiles.length) {
+    return {
+      success: false,
+      status: 403,
+      error: "この情報を取得する権限がありません"
+    };
+  }
+
+  return {
+    success: true,
+    userId: user.id,
+    role: profiles[0].role
+  };
 }
 
 function jsonResponse(data, status = 200) {
