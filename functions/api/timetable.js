@@ -1,6 +1,7 @@
 export async function onRequestGet(context) {
   try {
     const env = context.env;
+    const request = context.request;
     const requestUrl = new URL(context.request.url);
     console.log("受信したGET URL:", requestUrl.toString());
     
