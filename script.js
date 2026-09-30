@@ -421,27 +421,7 @@ function bindEvents() {
   $("#student-day")?.addEventListener("change", () => {
     renderStudent();
   });
-
-  // ========================================
-  // 先生選択
-  // ========================================
-
-  $("#student-teacher")?.addEventListener(
-    "change",
-    async () => {
-
-      state.profile.teacherId =
-        $("#student-teacher").value;
-
-      saveStored(
-        STORAGE_KEYS.profile,
-        state.profile
-      );
-
-      await renderStudent();
-    }
-  );
-
+    
    // ========================================
    // 生徒側プロフィール変更
    // ========================================
