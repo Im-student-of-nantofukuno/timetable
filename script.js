@@ -1229,7 +1229,7 @@ function showAddAdminProfileDialog() {
         );
 
         alert(
-          "管理者の登録に失敗しました。\n\n" +
+          "管理者の登録に失敗しました。IDを再確認の上、再度登録してください。\n　エラー内容:" +
           error.message
         );
 
