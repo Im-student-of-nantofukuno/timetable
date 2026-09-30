@@ -49,17 +49,53 @@ export async function onRequestGet(context) {
     console.log("GAS GET final URL:", gasResponse.url);
     console.log("GAS GET redirected:", gasResponse.redirected);
 
+    // GASから実際に返ってきた本文を確認
+    console.log(
+      "GAS GET response body:",
+      gasText.slice(0, 1000)
+    );
+
     let gasData;
 
     try {
       gasData = JSON.parse(gasText);
     } catch (error) {
-      console.error("GAS GET response:", gasText);
+
+      console.error(
+        "GAS GET response parse error:",
+        error.message
+      );
+
+      console.error(
+        "GAS GET status:",
+        gasResponse.status
+      );
+
+      console.error(
+        "GAS GET content-type:",
+        gasResponse.headers.get("content-type")
+      );
+
+      console.error(
+        "GAS GET final URL:",
+        gasResponse.url
+      );
+
+      console.error(
+        "GAS GET redirected:",
+        gasResponse.redirected
+      );
+
+      console.error(
+        "GAS GET response body:",
+        gasText.slice(0, 1000)
+      );
 
       return jsonResponse(
         {
           success: false,
-          error: "GASからJSONではない応答が返されました"
+          error:
+            "GASからJSONではない応答が返されました"
         },
         502
       );
