@@ -461,8 +461,7 @@ function bindEvents() {
         teacherControl.hidden = false;
       }
 
-      // 今回はまだ先生IDの中身を設定しない
-      // （後で実装）
+      await loadTeacherOptions();
 
       return;
     }
@@ -707,6 +706,48 @@ function bindEvents() {
       }
     );
   }
+
+async function loadTeacherOptions() {
+  const select = $("#student-teacher");
+
+  if (!select) return;
+
+  const { data, error } = await window.supabaseClient
+    .from("admin_profiles")
+    .select("user_id, display_name")
+    .order("display_name", { ascending: true });
+
+  if (error) {
+    console.error("先生一覧取得失敗:", error);
+
+    select.replaceChildren(
+      new Option("取得できませんでした", "")
+    );
+
+    return;
+  }
+
+  select.replaceChildren(
+    new Option("選択してください", "")
+  );
+
+  (data || []).forEach((profile) => {
+    if (!profile.user_id) return;
+
+    const displayName =
+      profile.display_name || "表示名未設定";
+
+    const shortId =
+      `${profile.user_id.slice(0, 8)}…`;
+
+    const option = new Option(
+      `${displayName} (${shortId})`,
+      profile.user_id
+    );
+
+    select.appendChild(option);
+  });
+}
 
 async function loadAdminProfiles() {
   const list = $("#admin-profile-list");
