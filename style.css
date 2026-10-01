@@ -1090,6 +1090,20 @@ button.matrix-cell:hover {
   background: #f2f2f2;
 }
 
+/* ========================================
+   科目選択ダイアログ：重複科目
+   ======================================== */
+
+.subject-selection-item.subject-selection-conflict {
+  color: #d00000;
+  background: #fff0f0;
+  border-left: 4px solid #d00000;
+}
+
+.subject-selection-item.subject-selection-conflict:hover {
+  color: #b00000;
+  background: #ffe0e0;
+}
 
 .subject-selection-empty {
   padding: 20px;
