@@ -2671,12 +2671,32 @@ async function editChange(classItem, period, existingChange) {
   // ========================================
   // 科目を検索・選択
   // ========================================
-  const subjectChange =
-      await showSubjectSelectionDialog(
-        allSubjects,
-        current,
-        `${state.adminDay || "月"}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`
-      );
+  const day =
+    state.adminDay || "月";
+
+  const allTimetables =
+    await fetchAllAdminTimetables();
+
+  if (!allTimetables) {
+    alert(
+      "重複判定用の時間割を取得できませんでした。\n" +
+      "時間割データを確認してください。"
+    );
+    return;
+  }
+
+const subjectChange =
+  await showSubjectSelectionDialog(
+    allSubjects,
+    current,
+    `${day}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`,
+    {
+      classId: classItem.id,
+      day,
+      period,
+      allTimetables
+    }
+  );
 
   if (subjectChange === null) {
     return;
@@ -2719,8 +2739,6 @@ async function editChange(classItem, period, existingChange) {
     alert("ログインしてください。");
     return;
   }
-
-  const day = state.adminDay || "月";
 
   // 変更した日付を日本時間で取得
   const now = new Date();
@@ -4024,12 +4042,259 @@ async function fetchAllGasSubjects() {
 }
 
 // ========================================
+// 重複判定用：全学年の時間割を取得
+// ========================================
+async function fetchAllAdminTimetables() {
+
+  const timetables = {};
+
+  for (const grade of ["1", "2", "3"]) {
+
+    const data =
+      await fetchGasAdminTimetable(grade);
+
+    if (!data) {
+      console.error(
+        `重複判定用の${grade}年時間割取得に失敗しました`
+      );
+
+      return null;
+    }
+
+    timetables[grade] = data;
+  }
+
+  return timetables;
+}
+
+// ========================================
+// 1つのsubject_idを実際の科目情報へ展開
+// jointなら構成科目をすべて返す
+// ========================================
+function getExpandedSubjectInfos(
+  subjectId,
+  subjectMap
+) {
+
+  const id =
+    String(subjectId || "").trim();
+
+  if (!id) {
+    return [];
+  }
+
+  const subject =
+    subjectMap.get(id);
+
+  if (!subject) {
+    return [];
+  }
+
+  // 通常科目
+  if (
+    !Array.isArray(subject.subject_ids)
+  ) {
+    return [subject];
+  }
+
+  // joint
+  return subject.subject_ids
+    .map(
+      childId =>
+        subjectMap.get(
+          String(childId).trim()
+        )
+    )
+    .filter(Boolean);
+}
+
+
+// ========================================
+// 指定した日・時限において
+// 候補科目が重複するか判定
+// ========================================
+function checkSubjectSelectionConflict(
+  candidateSubject,
+  targetClassId,
+  day,
+  period,
+  allSubjects,
+  allTimetables
+) {
+
+  const targetId =
+    String(targetClassId).trim();
+
+  const targetPeriod =
+    Number(period);
+
+  // subject_id → 科目情報
+  const subjectMap =
+    new Map();
+
+  (allSubjects || []).forEach(
+    subject => {
+
+      const id =
+        String(
+          subject.subject_id || ""
+        ).trim();
+
+      if (!id) return;
+
+      subjectMap.set(
+        id,
+        subject
+      );
+    }
+  );
+
+  // 候補科目を展開
+  const candidateInfos =
+    getExpandedSubjectInfos(
+      candidateSubject.subject_id,
+      subjectMap
+    );
+
+  if (
+    candidateInfos.length === 0
+  ) {
+    return false;
+  }
+
+  // 全学年・全クラスを確認
+  for (const grade of ["1", "2", "3"]) {
+
+    const gradeData =
+      allTimetables?.[grade];
+
+    if (!gradeData) {
+      continue;
+    }
+
+    const courses =
+      Array.isArray(gradeData.courses)
+        ? gradeData.courses
+        : [];
+
+    for (const courseData of courses) {
+
+      const classInfo =
+        courseData.class;
+
+      if (!classInfo) {
+        continue;
+      }
+
+      const otherClassId =
+        String(
+          classInfo.class_id ??
+          classInfo.id ??
+          ""
+        ).trim();
+
+      // 編集対象クラス自身は除外
+      if (
+        otherClassId === targetId
+      ) {
+        continue;
+      }
+
+      const timetable =
+        courseData.timetable?.[day];
+
+      if (!Array.isArray(timetable)) {
+        continue;
+      }
+
+      const periodData =
+        timetable.find(
+          item =>
+            Number(item.period) ===
+            targetPeriod
+        );
+
+      if (!periodData) {
+        continue;
+      }
+
+      const otherSubjectId =
+        String(
+          periodData.subject_id ||
+          periodData.subject_change ||
+          periodData.subject_base ||
+          ""
+        ).trim();
+
+      if (!otherSubjectId) {
+        continue;
+      }
+
+      const otherInfos =
+        getExpandedSubjectInfos(
+          otherSubjectId,
+          subjectMap
+        );
+
+      for (const candidateInfo of candidateInfos) {
+
+        const candidateTeacher =
+          String(
+            candidateInfo.teacher_id || ""
+          ).trim();
+
+        const candidatePlace =
+          String(
+            candidateInfo.place || ""
+          ).trim();
+
+        for (const otherInfo of otherInfos) {
+
+          const otherTeacher =
+            String(
+              otherInfo.teacher_id || ""
+            ).trim();
+
+          const otherPlace =
+            String(
+              otherInfo.place || ""
+            ).trim();
+
+          // 担当教員の重複
+          if (
+            candidateTeacher &&
+            otherTeacher &&
+            candidateTeacher ===
+              otherTeacher
+          ) {
+            return true;
+          }
+
+          // 場所の重複
+          if (
+            candidatePlace &&
+            otherPlace &&
+            candidatePlace ===
+              otherPlace
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+// ========================================
 // 科目ID選択ダイアログ
 // ========================================
 async function showSubjectSelectionDialog(
   subjects,
   currentValue,
-  locationText
+  locationText,
+  conflictContext = null
 ) {
   return new Promise((resolve) => {
 
@@ -4237,15 +4502,55 @@ async function showSubjectSelectionDialog(
         button.className =
           "subject-selection-item";
 
-        // ジョイント科目だけ、ほんの少し色を変える
-        if (/^j[A-Z]{2}\d{3}$/.test(subjectId)) {
-          button.style.backgroundColor = "#f4f8ff";
+
+        // ======================================
+        // 重複判定
+        // ======================================
+        let isConflict = false;
+
+        if (conflictContext) {
+
+          isConflict =
+            checkSubjectSelectionConflict(
+              subject,
+              conflictContext.classId,
+              conflictContext.day,
+              conflictContext.period,
+              subjects,
+              conflictContext.allTimetables
+            );
         }
+
+
+        // ======================================
+        // joint科目の色
+        // ======================================
+        if (
+          /^j[A-Z]{2}\d{3}$/.test(subjectId)
+        ) {
+          button.style.backgroundColor =
+            "#f4f8ff";
+        }
+
+
+        // ======================================
+        // 重複科目は赤表示
+        // ======================================
+        if (isConflict) {
+
+          button.classList.add(
+            "subject-selection-conflict"
+          );
+
+          button.title =
+            "担当教員または場所が他のクラスと重複します";
+        }
+
 
         // 「科目ID : 科目名」の形式
         button.textContent =
           `${subjectId} : ${subjectName}`;
-
+        
         button.addEventListener(
           "click",
           () => {
