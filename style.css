@@ -1076,6 +1076,8 @@ button.matrix-cell:hover {
 }
 
 .subject-selection-item.subject-selection-conflict {
+  color: #d00;
+  border-color: #d00;
   background-color: #fff0f0 !important;
 }
 
