@@ -535,6 +535,11 @@ button.matrix-cell:hover {
   background: var(--changed);
 }
 
+.is-conflict {
+  background: #ffb3b3 !important;
+  border: 3px solid #d00000;
+}
+
 .profile-controls[data-course="science"],
 .profile-controls[data-course="explore-science"] {
   border-color: var(--soft-blue);
