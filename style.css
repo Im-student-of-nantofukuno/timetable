@@ -1075,6 +1075,9 @@ button.matrix-cell:hover {
   cursor: pointer;
 }
 
+.subject-selection-item.subject-selection-conflict {
+  background-color: #fff0f0 !important;
+}
 
 .subject-selection-item:last-child {
   border-bottom: none;
