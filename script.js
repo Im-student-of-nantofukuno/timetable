@@ -41,7 +41,9 @@ const state = {
     managers: [],
     gasClassOptionsCache: {},
     gasAdminTimetableCache: {},
+    gasAdminConflictPairs: {},
     gasAdminTimetableConflicts: {},
+    gasAdminConflictInitialized: false,
     gasAllSubjectsCache: null,
     gasTeacherTimetableCache: {},
   }
@@ -2284,6 +2286,18 @@ async function renderQuickAdmin() {
 
   if (!matrix) return;
 
+  
+  if (
+  !state.data.gasAdminConflictInitialized
+) {
+
+  await fetchInitialAdminConflicts();
+
+  state.data.gasAdminConflictInitialized =
+    true;
+
+}
+
   // 学年単位のGASデータを取得
   const gasData =
     await fetchGasAdminTimetable(grade);
@@ -3688,8 +3702,106 @@ async function fetchGasAdminTimetable(grade) {
   }
 }
 
+// ========================================
+// GASから初期重複一覧を取得
+// 全学年・全クラス対象
+// ========================================
+
+async function fetchInitialAdminConflicts() {
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/timetable?admin=conflicts"
+      );
+
+    if (!response.ok) {
+
+      throw new Error(
+        `重複一覧取得失敗: ${response.status}`
+      );
+
+    }
+
+    const result =
+      await response.json();
+
+    console.log(
+      "初期重複一覧GAS response:",
+      result
+    );
+
+    if (!result.success) {
+
+      throw new Error(
+        result.error ||
+        "初期重複一覧を取得できませんでした"
+      );
+
+    }
+
+    const pairs = {};
+
+    (result.data || []).forEach(
+      (conflict) => {
+
+        const classId1 =
+          String(
+            conflict.class_id1 || ""
+          ).trim();
+
+        const classId2 =
+          String(
+            conflict.class_id2 || ""
+          ).trim();
+
+        if (
+          !classId1 ||
+          !classId2
+        ) {
+          return;
+        }
+
+        const key =
+          getAdminConflictPairKey(
+            conflict.day,
+            conflict.period,
+            classId1,
+            classId2
+          );
+
+        pairs[key] = true;
+
+      }
+    );
+
+    state.data.gasAdminConflictPairs =
+      pairs;
+
+    console.log(
+      "初期重複ペア:",
+      pairs
+    );
+
+    return pairs;
+
+  } catch (error) {
+
+    console.error(
+      "初期重複一覧取得失敗:",
+      error
+    );
+
+    state.data.gasAdminConflictPairs =
+      {};
+
+    return null;
+
+  }
+}
+
 function getAdminConflictPairKey(
-  grade,
   day,
   period,
   classIdA,
@@ -3702,7 +3814,6 @@ function getAdminConflictPairKey(
   const maxId = Math.max(a, b);
 
   return [
-    String(grade),
     String(day),
     String(period),
     String(minId),
@@ -3729,11 +3840,10 @@ function saveAdminConflicts(
     String(targetClassId).trim();
 
   const prefix = [
-    String(grade),
     String(day),
     String(period)
   ].join("_") + "_";
-
+  
   // 今回変更したクラスに関係する
   // 古い重複ペアを削除
   Object.keys(pairs).forEach((key) => {
@@ -3779,7 +3889,6 @@ function saveAdminConflicts(
 
       const key =
         getAdminConflictPairKey(
-          grade,
           day,
           period,
           targetId,
@@ -3809,7 +3918,6 @@ function hasAdminConflict(
     String(classId);
 
   const prefix = [
-    String(grade),
     String(day),
     String(period)
   ].join("_") + "_";
@@ -3825,10 +3933,10 @@ function hasAdminConflict(
         key.split("_");
 
       const classA =
-        parts[3];
+        parts[2];
 
       const classB =
-        parts[4];
+        parts[3];
 
       return (
         classA === targetId ||
