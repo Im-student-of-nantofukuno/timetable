@@ -4123,24 +4123,28 @@ function checkSubjectSelectionConflict(
 ) {
 
   const targetId =
-    String(targetClassId).trim();
+    String(targetClassId || "").trim();
 
   const targetPeriod =
     Number(period);
 
+  // ========================================
   // subject_id → 科目情報
+  // ========================================
   const subjectMap =
     new Map();
 
   (allSubjects || []).forEach(
-    subject => {
+    (subject) => {
 
       const id =
         String(
           subject.subject_id || ""
         ).trim();
 
-      if (!id) return;
+      if (!id) {
+        return;
+      }
 
       subjectMap.set(
         id,
@@ -4149,7 +4153,16 @@ function checkSubjectSelectionConflict(
     }
   );
 
+
+  // ========================================
   // 候補科目を展開
+  //
+  // 通常科目
+  //   → その科目自身
+  //
+  // joint
+  //   → 構成科目すべて
+  // ========================================
   const candidateInfos =
     getExpandedSubjectInfos(
       candidateSubject.subject_id,
@@ -4162,8 +4175,13 @@ function checkSubjectSelectionConflict(
     return false;
   }
 
-  // 全学年・全クラスを確認
-  for (const grade of ["1", "2", "3"]) {
+
+  // ========================================
+  // 全学年を確認
+  // ========================================
+  for (
+    const grade of ["1", "2", "3"]
+  ) {
 
     const gradeData =
       allTimetables?.[grade];
@@ -4172,44 +4190,57 @@ function checkSubjectSelectionConflict(
       continue;
     }
 
-    const courses =
-      Array.isArray(gradeData.courses)
-        ? gradeData.courses
-        : [];
 
-    for (const courseData of courses) {
+    // ========================================
+    // この学年の指定曜日
+    // ========================================
+    const dayData =
+      gradeData.timetable?.[day];
 
-      const classInfo =
-        courseData.class;
+    if (!dayData) {
+      continue;
+    }
 
-      if (!classInfo) {
-        continue;
-      }
 
-      const otherClassId =
+    // ========================================
+    // 全クラスを確認
+    // ========================================
+    for (
+      const otherClassId of
+      Object.keys(dayData)
+    ) {
+
+      const normalizedClassId =
         String(
-          classInfo.class_id ??
-          classInfo.id ??
-          ""
+          otherClassId
         ).trim();
+
 
       // 編集対象クラス自身は除外
       if (
-        otherClassId === targetId
+        normalizedClassId ===
+        targetId
       ) {
         continue;
       }
 
-      const timetable =
-        courseData.timetable?.[day];
 
-      if (!Array.isArray(timetable)) {
+      const timetable =
+        dayData[otherClassId];
+
+      if (
+        !Array.isArray(timetable)
+      ) {
         continue;
       }
 
+
+      // ========================================
+      // 同じ時限を探す
+      // ========================================
       const periodData =
         timetable.find(
-          item =>
+          (item) =>
             Number(item.period) ===
             targetPeriod
         );
@@ -4218,11 +4249,18 @@ function checkSubjectSelectionConflict(
         continue;
       }
 
+
+      // ========================================
+      // 実際に行われる科目
+      //
+      // subject_changeがあれば変更後、
+      // なければsubject_base
+      // ========================================
       const otherSubjectId =
         String(
-          periodData.subject_id ||
           periodData.subject_change ||
           periodData.subject_base ||
+          periodData.subject_id ||
           ""
         ).trim();
 
@@ -4230,59 +4268,88 @@ function checkSubjectSelectionConflict(
         continue;
       }
 
+
+      // ========================================
+      // 相手側の科目を展開
+      // ========================================
       const otherInfos =
         getExpandedSubjectInfos(
           otherSubjectId,
           subjectMap
         );
 
-      for (const candidateInfo of candidateInfos) {
+
+      // ========================================
+      // 先生・場所を比較
+      // ========================================
+      for (
+        const candidateInfo
+        of candidateInfos
+      ) {
 
         const candidateTeacher =
           String(
-            candidateInfo.teacher_id || ""
+            candidateInfo.teacher_id ||
+            ""
           ).trim();
 
         const candidatePlace =
           String(
-            candidateInfo.place || ""
+            candidateInfo.place ||
+            ""
           ).trim();
 
-        for (const otherInfo of otherInfos) {
+
+        for (
+          const otherInfo
+          of otherInfos
+        ) {
 
           const otherTeacher =
             String(
-              otherInfo.teacher_id || ""
+              otherInfo.teacher_id ||
+              ""
             ).trim();
 
           const otherPlace =
             String(
-              otherInfo.place || ""
+              otherInfo.place ||
+              ""
             ).trim();
 
+
+          // ------------------------------------
           // 担当教員の重複
+          // ------------------------------------
           if (
             candidateTeacher &&
             otherTeacher &&
             candidateTeacher ===
               otherTeacher
           ) {
+
             return true;
           }
 
+
+          // ------------------------------------
           // 場所の重複
+          // ------------------------------------
           if (
             candidatePlace &&
             otherPlace &&
             candidatePlace ===
               otherPlace
           ) {
+
             return true;
           }
+
         }
       }
     }
   }
+
 
   return false;
 }
