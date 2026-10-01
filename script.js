@@ -2998,14 +2998,6 @@ async function editBaseSubject(classItem, period, currentSubject) {
     return;
   }
 
-  // ========================================
-  // 曜日
-  // ========================================
-  const day =
-    state.deepAdminDay ||
-    state.adminDay ||
-    "月";
-
   try {
     // ========================================
     // Cloudflare Pages Function経由で保存
