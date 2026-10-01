@@ -41,6 +41,7 @@ const state = {
     managers: [],
     gasClassOptionsCache: {},
     gasAdminTimetableCache: {},
+    gasAdminTimetableConflicts: {},
     gasAllSubjectsCache: null,
     gasTeacherTimetableCache: {},
   }
@@ -2362,6 +2363,13 @@ async function renderQuickAdmin() {
 
       const isChanged =
         Boolean(changeSubjectId);
+      const isConflict =
+        hasAdminConflict(
+          grade,
+          day,
+          classId,
+          period
+        );
 
       const cell =
         createCell(
@@ -2369,7 +2377,9 @@ async function renderQuickAdmin() {
           "button",
           `matrix-cell ${
             getSubjectClass(classItem.course)
-          }${isChanged ? " is-changed" : ""}`
+          }${isChanged ? " is-changed" : ""}${
+            isConflict ? " is-conflict" : ""
+          }`
         );
 
       cell.type = "button";
@@ -2518,11 +2528,22 @@ async function renderDeepAdmin() {
               timetableItem
             ) || displaySubjectId
           : "";
+
+      const isConflict =
+        hasAdminConflict(
+          grade,
+          day,
+          classId,
+          period
+        );
+      
       const cell =
         createCell(
           displayName,
           "button",
-          `matrix-cell ${getSubjectClass(classItem.course)}`
+          `matrix-cell ${
+            getSubjectClass(classItem.course)
+          }${isConflict ? " is-conflict" : ""}`
         );
 
       cell.type = "button";
@@ -2782,9 +2803,29 @@ async function editChange(classItem, period, existingChange) {
       message +=
         "\n\n重複していますが、時間割は変更されています。";
     }
-
     alert(message);
 
+    // ========================================
+    // 重複セル情報をブラウザ側へ保存
+    // ========================================
+
+    clearAdminConflictData(
+      classItem.grade
+    );
+
+    if (
+      result.conflicts &&
+      result.conflicts.length > 0
+    ) {
+      saveAdminConflicts(
+        classItem.grade,
+        day,
+        classItem.id,
+        period,
+        result.conflicts
+      );
+    }
+    
     // ========================================
     // 変更履歴をSupabaseへ保存
     // ========================================
@@ -2956,6 +2997,27 @@ async function editBaseSubject(classItem, period, currentSubject) {
       );
     }
 
+    // ========================================
+    // 重複セル情報をブラウザ側へ保存
+    // ========================================
+
+    clearAdminConflictData(
+      classItem.grade
+    );
+
+    if (
+      result.conflicts &&
+      result.conflicts.length > 0
+    ) {
+      saveAdminConflicts(
+        classItem.grade,
+        day,
+        classItem.id,
+        period,
+        result.conflicts
+      );
+    }
+      
     // ========================================
     // ブラウザ側のGASキャッシュを削除
     // ========================================
@@ -3644,6 +3706,97 @@ async function fetchGasAdminTimetable(grade) {
     return null;
   }
 }
+
+// ========================================
+// 管理画面の重複セルを管理
+// ========================================
+
+function getAdminConflictKey(
+  grade,
+  day,
+  classId,
+  period
+) {
+  return [
+    String(grade),
+    String(day),
+    String(classId),
+    String(period)
+  ].join("_");
+}
+
+function clearAdminConflictData(grade) {
+  const prefix =
+    `${String(grade)}_`;
+
+  Object.keys(
+    state.data.gasAdminTimetableConflicts || {}
+  ).forEach((key) => {
+    if (key.startsWith(prefix)) {
+      delete state.data.gasAdminTimetableConflicts[key];
+    }
+  });
+}
+
+function saveAdminConflicts(
+  grade,
+  day,
+  targetClassId,
+  period,
+  conflicts
+) {
+  if (!state.data.gasAdminTimetableConflicts) {
+    state.data.gasAdminTimetableConflicts = {};
+  }
+
+  // 今回変更したセル
+  const targetKey =
+    getAdminConflictKey(
+      grade,
+      day,
+      targetClassId,
+      period
+    );
+
+  state.data.gasAdminTimetableConflicts[
+    targetKey
+  ] = true;
+
+  // 重複相手のセル
+  (conflicts || []).forEach((conflict) => {
+    const conflictKey =
+      getAdminConflictKey(
+        grade,
+        day,
+        conflict.class_id,
+        period
+      );
+
+    state.data.gasAdminTimetableConflicts[
+      conflictKey
+    ] = true;
+  });
+}
+
+function hasAdminConflict(
+  grade,
+  day,
+  classId,
+  period
+) {
+  const key =
+    getAdminConflictKey(
+      grade,
+      day,
+      classId,
+      period
+    );
+
+  return Boolean(
+    state.data.gasAdminTimetableConflicts?.[key]
+  );
+}
+
 // ========================================
 // 全学年のsubject_idを取得
 // ========================================
