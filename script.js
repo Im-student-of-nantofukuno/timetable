@@ -2470,6 +2470,17 @@ async function renderDeepAdmin() {
 
   state.deepAdminDay = day;
 
+  if (
+    !state.data.gasAdminConflictInitialized
+  ) {
+
+    await fetchInitialAdminConflicts();
+
+    state.data.gasAdminConflictInitialized =
+      true;
+
+  }
+  
   // 浅い管理画面と同じGASデータを使用
   const gasData = await fetchGasAdminTimetable(grade);
 
@@ -3855,10 +3866,10 @@ function saveAdminConflicts(
       key.split("_");
 
     const classA =
-      parts[3];
+      parts[2];
 
     const classB =
-      parts[4];
+      parts[3];
 
     if (
       classA === targetId ||
