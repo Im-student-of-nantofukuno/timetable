@@ -2746,6 +2746,164 @@ async function editChange(classItem, period, existingChange) {
       String(classItem.grade)
     ];
 
+    function getAdminConflictPairKey(
+      grade,
+      day,
+      period,
+      classIdA,
+      classIdB    
+    ) {
+      const a = Number(classIdA);
+      const b = Number(classIdB);
+
+      const minId = Math.min(a, b);
+      const maxId = Math.max(a, b);
+
+      return [
+        String(grade),
+        String(day),
+        String(period),
+        String(minId),
+        String(maxId)
+      ].join("_");
+    }
+
+
+    function saveAdminConflicts(
+      grade,
+      day,
+      targetClassId,
+      period,
+      conflicts
+    ) {
+      if (!state.data.gasAdminConflictPairs) {
+        state.data.gasAdminConflictPairs = {};
+      }
+
+      const pairs =
+        state.data.gasAdminConflictPairs;
+
+      const targetId =
+        String(targetClassId).trim();
+
+      const prefix = [
+        String(grade),
+        String(day),
+        String(period)
+      ].join("_") + "_";
+
+      // ========================================
+      // ① 今回変更したクラスに関係する
+      //    古い重複ペアを削除
+      // ========================================
+
+      Object.keys(pairs).forEach((key) => {
+        if (!key.startsWith(prefix)) {
+          return;
+        }
+
+        const parts =
+          key.split("_");
+
+        const classA =
+          parts[3];
+
+        const classB =
+          parts[4];
+    
+        if (
+          classA === targetId ||
+          classB === targetId
+        ) {
+          delete pairs[key];
+        }
+      });
+
+
+      // ========================================
+      // ② 今回の最新の重複を登録
+      // ========================================
+
+      (conflicts || []).forEach(
+        (conflict) => {
+
+          const conflictClassId =
+            String(
+              conflict.class_id || ""
+            ).trim();
+
+          if (!conflictClassId) {
+            return;
+          }
+
+          // 自分自身との重複は登録しない
+          if (
+            conflictClassId === targetId
+          ) {
+            return;
+          }
+
+          const key =
+            getAdminConflictPairKey(
+              grade,
+              day,
+              period,
+              targetId,
+              conflictClassId
+            );
+
+          pairs[key] = true;
+        }
+      );
+    }
+
+    
+    function hasAdminConflict(
+      grade,
+      day,
+      classId,
+      period
+    ) {
+      const pairs =
+        state.data.gasAdminConflictPairs;
+
+      if (!pairs) {
+        return false;
+      }
+
+      const targetId =
+        String(classId);
+
+      const prefix = [
+        String(grade),
+        String(day),
+        String(period)
+      ].join("_") + "_";
+
+      return Object.keys(pairs).some(
+        (key) => {
+
+          if (!key.startsWith(prefix)) {
+            return false;
+          }
+
+          const parts =
+            key.split("_");
+
+          const classA =
+            parts[3];
+
+          const classB =
+            parts[4];
+
+          return (
+            classA === targetId ||
+            classB === targetId
+          );
+        }
+      );
+    }
+    
     // ========================================
     // 重複結果を確認
     // ========================================
@@ -2806,20 +2964,16 @@ async function editChange(classItem, period, existingChange) {
     alert(message);
 
     // ========================================
-    // 重複セル情報をブラウザ側へ保存
+    // 重複セル情報をブラウザ側へ更新
+    // 重複が0件でも必ず呼ぶ
     // ========================================
-    if (
-      result.conflicts &&
-      result.conflicts.length > 0
-    ) {
-      saveAdminConflicts(
-        classItem.grade,
-        day,
-        classItem.id,
-        period,
-        result.conflicts
-      );
-    }
+    saveAdminConflicts(
+      classItem.grade,
+      day,
+      classItem.id,
+      period,
+      result.conflicts || []
+    );
     
     // ========================================
     // 変更履歴をSupabaseへ保存
@@ -2995,18 +3149,13 @@ async function editBaseSubject(classItem, period, currentSubject) {
     // ========================================
     // 重複セル情報をブラウザ側へ保存
     // ========================================
-    if (
-      result.conflicts &&
-      result.conflicts.length > 0
-    ) {
-      saveAdminConflicts(
-        classItem.grade,
-        day,
-        classItem.id,
-        period,
-        result.conflicts
-      );
-    }
+    saveAdminConflicts(
+      classItem.grade,
+      day,
+      classItem.id,
+      period,
+      result.conflicts || []
+    );
       
     // ========================================
     // ブラウザ側のGASキャッシュを削除
@@ -3697,24 +3846,6 @@ async function fetchGasAdminTimetable(grade) {
   }
 }
 
-// ========================================
-// 管理画面の重複セルを管理
-// ========================================
-
-function getAdminConflictKey(
-  grade,
-  day,
-  classId,
-  period
-) {
-  return [
-    String(grade),
-    String(day),
-    String(classId),
-    String(period)
-  ].join("_");
-}
-
 function clearAdminConflictData(grade) {
   const prefix =
     `${String(grade)}_`;
@@ -3727,66 +3858,6 @@ function clearAdminConflictData(grade) {
     }
   });
 }
-
-function saveAdminConflicts(
-  grade,
-  day,
-  targetClassId,
-  period,
-  conflicts
-) {
-  if (!state.data.gasAdminTimetableConflicts) {
-    state.data.gasAdminTimetableConflicts = {};
-  }
-
-  // 今回変更したセル
-  const targetKey =
-    getAdminConflictKey(
-      grade,
-      day,
-      targetClassId,
-      period
-    );
-
-  state.data.gasAdminTimetableConflicts[
-    targetKey
-  ] = true;
-
-  // 重複相手のセル
-  (conflicts || []).forEach((conflict) => {
-    const conflictKey =
-      getAdminConflictKey(
-        grade,
-        day,
-        conflict.class_id,
-        period
-      );
-
-    state.data.gasAdminTimetableConflicts[
-      conflictKey
-    ] = true;
-  });
-}
-
-function hasAdminConflict(
-  grade,
-  day,
-  classId,
-  period
-) {
-  const key =
-    getAdminConflictKey(
-      grade,
-      day,
-      classId,
-      period
-    );
-
-  return Boolean(
-    state.data.gasAdminTimetableConflicts?.[key]
-  );
-}
-
 // ========================================
 // 全学年のsubject_idを取得
 // ========================================
