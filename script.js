@@ -2915,16 +2915,38 @@ async function editBaseSubject(classItem, period, currentSubject) {
     return;
   }
 
-  // ========================================
-  // 科目を検索・選択
-  // ========================================
-  const subjectId =
-    await showSubjectSelectionDialog(
-      allSubjects,
-      currentSubject,
-      `${classItem.label}　${state.data.courses[classItem.course] || ""}　${period}限目`
-    );
+    // ========================================
+    // 科目を検索・選択
+    // ========================================
+    const day =
+      state.deepAdminDay ||
+      state.adminDay ||
+      "月";
 
+    const allTimetables =
+      await fetchAllAdminTimetables();
+
+    if (!allTimetables) {
+      alert(
+        "重複判定用の時間割を取得できませんでした。\n" +
+        "時間割データを確認してください。"
+      );
+      return;
+    }
+
+    const subjectId =
+      await showSubjectSelectionDialog(
+        allSubjects,
+        currentSubject,
+        `${classItem.label}　${state.data.courses[classItem.course] || ""}　${period}限目`,
+        {
+          classId: classItem.id,
+          day,
+          period,
+          allTimetables
+        }
+      );
+    
   // キャンセル
   if (subjectId === null) {
     return;
