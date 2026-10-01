@@ -2808,11 +2808,6 @@ async function editChange(classItem, period, existingChange) {
     // ========================================
     // 重複セル情報をブラウザ側へ保存
     // ========================================
-
-    clearAdminConflictData(
-      classItem.grade
-    );
-
     if (
       result.conflicts &&
       result.conflicts.length > 0
@@ -3000,11 +2995,6 @@ async function editBaseSubject(classItem, period, currentSubject) {
     // ========================================
     // 重複セル情報をブラウザ側へ保存
     // ========================================
-
-    clearAdminConflictData(
-      classItem.grade
-    );
-
     if (
       result.conflicts &&
       result.conflicts.length > 0
