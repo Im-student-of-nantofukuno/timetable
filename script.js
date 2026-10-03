@@ -56,11 +56,20 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 // 画面上部に一時的な通知を表示
 // alert() の代わりに使用
 // ========================================
-function showToast(message, duration = 3500) {
+function showToast(
+  message,
+  duration = 3500,
+  type = "normal"
+) {
   const toast = document.createElement("div");
 
   toast.className = "app-toast";
   toast.textContent = message;
+
+  const backgroundColor =
+    type === "error"
+      ? "#d00000"
+      : "#333";
 
   toast.style.cssText = `
     position: fixed;
@@ -72,7 +81,7 @@ function showToast(message, duration = 3500) {
     max-width: min(90vw, 600px);
     padding: 12px 20px;
 
-    background: #333;
+    background: ${backgroundColor};
     color: #fff;
 
     border-radius: 8px;
@@ -160,6 +169,12 @@ async function setupAuth() {
 
     if (error) {
       console.error("管理者プロフィール取得失敗:", error);
+
+      showToast(
+        "管理者プロフィールの取得に失敗しました。",
+        5000,
+        "error"
+      );  
       return false;
     }
 
@@ -182,6 +197,13 @@ async function setupAuth() {
 
   if (error) {
     console.error("認証状態取得失敗:", error);
+        
+    showToast(
+      "認証状態の確認取得に失敗しました。",
+      5000,
+      "error"
+      );  
+    
     return;
   }
 
@@ -240,6 +262,11 @@ async function loadInitialData() {
       STORAGE_KEYS.notifications,
       window.NOTIFICATIONS || []
     );
+    showToast(
+      "お知らせ・変更履歴 の取得に失敗しました。",
+      5000,
+      "error"
+      );  
   } else {
     console.log("notifications取得成功:", data);
     state.data.notifications = data || [];
@@ -283,7 +310,12 @@ function bindEvents() {
         } = await window.supabaseClient.auth.getSession();
 
         if (error) {
-          console.error("認証状態の確認に失敗:", error);
+          console.error("認証状態の確認失敗:", error);
+          showToast(
+            "認証状態の確認に失敗しました。",
+            5000,
+            "error"
+            );  
           return;
         }
 
@@ -406,7 +438,11 @@ function bindEvents() {
  
             } catch (error) {
               console.error("ユーザーIDのコピーに失敗:", error);
-              showToast("コピーに失敗しました。ユーザーIDを手動でコピーしてください。");
+              showToast(
+                "コピーに失敗しました。ユーザーIDを手動でコピーしてください。",
+                5000,
+                "error"
+                );  
             }
           });
           
@@ -821,9 +857,15 @@ async function loadTeacherOptions() {
 
   if (error) {
     console.error(
-      "先生一覧取得失敗:",
+      "管理者一覧取得失敗:",
       error
     );
+
+    showToast(
+      "管理者一覧の取得に失敗しました。",
+      5000,
+      "error"
+      );  
 
     select.replaceChildren(
       new Option(
@@ -1202,6 +1244,12 @@ async function loadAdminProfiles() {
       "管理者一覧取得失敗:",
       error
     );
+
+    showToast(
+      "管理者一覧の取得に失敗しました。",
+      5000,
+      "error"
+      );  
 
     list.replaceChildren(
       createEmptyState(
@@ -1705,9 +1753,10 @@ function showAddAdminProfileDialog() {
         );
 
         showToast(
-          "管理者の登録に失敗しました。IDを再確認の上、再度登録してください。\n　エラー内容:" +
-          error.message
-        );
+          "管理者の登録に失敗しました。IDを再確認の上、再度登録してください。\n　エラー内容:" + error.message,
+          5000,
+          "error"
+          );  
 
         submitButton.disabled = false;
         submitButton.textContent = "追加する";
@@ -1823,6 +1872,12 @@ async function fetchTeacherDayTimetable(teacherId, day) {
       "先生時間割：認証状態の取得に失敗:",
       sessionError
     );
+
+    showToast(
+      "先生の時間割処理にて、認証状態の取得に失敗しました。",
+      5000,
+      "error"
+      );  
     return null;
   }
 
@@ -1830,6 +1885,12 @@ async function fetchTeacherDayTimetable(teacherId, day) {
     console.error(
       "先生時間割：ログインしていません"
     );
+
+    showToast(
+      "先生の時間割処理にて、ログインを確認できませんでした。",
+      5000,
+      "error"
+      );  
     return null;
   }
 
@@ -1897,6 +1958,12 @@ async function fetchTeacherDayTimetable(teacherId, day) {
       "先生時間割取得エラー:",
       error
     );
+
+    showToast(
+      "先生の時間割の取得に失敗しました。",
+      5000,
+      "error"
+      );  
     return null;
   }
 }
@@ -2153,6 +2220,13 @@ async function renderStudent() {
         "利用可能なコースがありません:",
         optionsData
       );
+
+      
+      showToast(
+        "無効なコースが入力されました。",
+        5000,
+        "error"
+        );  
 
       $$(".period-subject").forEach(
         (subjectNode) => {
@@ -2999,8 +3073,10 @@ const subjectChange =
 
     showToast(
       "時間割の変更に失敗しました。\n\n" +
-      error.message
-    );
+      error.message,
+      5000,
+      "error"
+    );      
   }
 }
 
@@ -3090,7 +3166,9 @@ async function editBaseSubject(classItem, period, currentSubject) {
     );
 
     showToast(
-      "ログイン状態の確認に失敗しました。"
+      "ログイン状態の確認に失敗しました。",
+      5000,
+      "error"
     );
 
     return;
@@ -3190,8 +3268,10 @@ async function editBaseSubject(classItem, period, currentSubject) {
 
     showToast(
       "基本時間割の変更に失敗しました。\n\n" +
-      error.message
-    );
+      error.message,
+      5000,
+      "error"
+    );  
   }
 }
 
@@ -3236,7 +3316,11 @@ async function handlePostSubmit(event) {
     .select();
   if (error) {
     console.error("お知らせ投稿失敗:", error);
-    showToast("お知らせの投稿に失敗しました。");
+    showToast(
+      "お知らせの投稿に失敗しました。",
+      5000,
+      "error"
+    );
     return;
   }
   console.log("お知らせ投稿成功:", data);
@@ -3539,6 +3623,13 @@ async function addChangeHistory(
       "変更履歴の保存に失敗:",
       error
     );
+
+    
+    showToast(
+      "変更履歴の保存に失敗しました。",
+      5000,
+      "error"
+    );  
 
     throw new Error(
       error.message ||
@@ -3927,6 +4018,12 @@ async function fetchGasAdminTimetable(grade) {
       "fetchGasAdminTimetable error:",
       error
     );
+    
+    showToast(
+      "GASから時間割の取得に失敗しました。",
+      5000,
+      "error"
+    );  
 
     return null;
   }
@@ -4022,6 +4119,12 @@ async function fetchInitialAdminConflicts() {
       "初期重複一覧取得失敗:",
       error
     );
+    
+    showToast(
+      "重複一覧の取得に失敗しました。",
+      5000,
+      "error"
+    );  
 
     state.data.gasAdminConflictPairs =
       {};
@@ -4237,6 +4340,12 @@ async function fetchAllGasSubjects() {
       "全学年subject一覧取得失敗:",
       error
     );
+    
+    showToast(
+      "全学年の科目一覧の取得に失敗しました。",
+      5000,
+      "error"
+    );  
 
     return null;
   }
