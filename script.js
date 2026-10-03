@@ -2367,13 +2367,7 @@ async function renderQuickAdmin() {
         timetableItem?.subject_change || "";
 
       const displayName =
-        changeSubjectId
-          ? getGasAdminSubjectDisplayName(
-              gasData,
-              changeSubjectId,
-              timetableItem
-            )
-          : "";
+        changeSubjectId || "";
 
       const isChanged =
         Boolean(changeSubjectId);
@@ -2554,16 +2548,13 @@ async function renderDeepAdmin() {
 
       // 深い管理画面では、変更後の時間割を無視して
       // 基本時間割のみを表示
-      const displaySubjectId = subjectBase;
-
+      const displaySubjectId =
+        changeSubjectId ||
+        timetableItem?.subject_base ||
+        "";
+      
       const displayName =
-        displaySubjectId
-          ? getGasAdminSubjectDisplayName(
-              gasData,
-              displaySubjectId,
-              timetableItem
-            ) || displaySubjectId
-          : "";
+        displaySubjectId;
 
       const isConflict =
         hasAdminConflict(
