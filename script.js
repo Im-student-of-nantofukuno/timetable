@@ -4825,23 +4825,29 @@ function getGasAdminSubjectTooltip(
 
   const subjects =
     gasData?.subjects || [];
-
+  
+  console.log(
+    "管理画面ツールチップ subjects:",
+    subjects
+  );
+  
+  console.log(
+    "管理画面ツールチップ検索ID:",
+    id
+  );
+  
   const subject =
     subjects.find(
       (item) =>
-        String(item.subject_id).trim() === id
+        String(item.subject_id || "").trim() === id
     );
-
+  
   if (!subject) {
-    return `科目ID: ${id}`;
-  }
-
-  // 通常科目
-  if (!Array.isArray(subject.subject_ids)) {
     return [
-      `表示名: ${subject.subject_name || id}`,
-      `先生: ${subject.teacher_id || "―"}`,
-      `場所: ${subject.place || "―"}`
+      `科目ID: ${id}`,
+      "表示名: ―",
+      "先生: ―",
+      "場所: ―"
     ].join("\n");
   }
 
