@@ -2543,19 +2543,9 @@ async function renderDeepAdmin() {
         );
 
       // 基本時間割
-      const subjectBase =
-      timetableItem?.subject_base || "";
-
-      // 深い管理画面では、変更後の時間割を無視して
-      // 基本時間割のみを表示
       const displaySubjectId =
-        changeSubjectId ||
-        timetableItem?.subject_base ||
-        "";
+        timetableItem?.subject_base || "";
       
-      const displayName =
-        displaySubjectId;
-
       const isConflict =
         hasAdminConflict(
           grade,
@@ -2566,13 +2556,14 @@ async function renderDeepAdmin() {
       
       const cell =
         createCell(
-          displayName,
+          displaySubjectId,
           "button",
           `matrix-cell ${
             getSubjectClass(classItem.course)
           }${isConflict ? " is-conflict" : ""}`
         );
-
+      
+      // カーソルを合わせたときの詳細情報
       cell.title =
         getGasAdminSubjectTooltip(
           gasData,
