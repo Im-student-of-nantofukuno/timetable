@@ -52,15 +52,92 @@ const state = {
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
+// ========================================
+// 画面上部に一時的な通知を表示
+// alert() の代わりに使用
+// ========================================
+function showToast(message, duration = 3500) {
+  const toast = document.createElement("div");
+
+  toast.className = "app-toast";
+  toast.textContent = message;
+
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    z-index: 99999;
+
+    max-width: min(90vw, 600px);
+    padding: 12px 20px;
+
+    background: #333;
+    color: #fff;
+
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: pre-line;
+    text-align: center;
+
+    opacity: 0;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+
+    pointer-events: none;
+  `;
+
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform =
+      "translate(-50%, 0)";
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform =
+      "translate(-50%, -20px)";
+
+    setTimeout(() => {
+      toast.remove();
+    }, 200);
+  }, duration);
+}
+
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
-  await loadInitialData();
-  bindEvents();
-  await setupAuth();
-  restoreProfile();
-  updateTargetSummary();
-  renderAll();
+  try {
+    await loadInitialData();
+    bindEvents();
+    await setupAuth();
+    restoreProfile();
+    updateTargetSummary();
+    renderAll();
+
+  } catch (error) {
+
+    console.error(
+      "初期読み込みエラー:",
+      error
+    );
+
+    showToast(
+      "ページの読み込みに失敗しました。"
+    );
+
+    document.body.appendChild(
+      createLoadErrorState(
+        "ページを読み込めませんでした。"
+      )
+    );
+  }
 }
 
 async function setupAuth() {
@@ -224,7 +301,7 @@ function bindEvents() {
         }else if(
           state.adminProfile?.role === "user"
         ) {
-          alert("あなたの権限では、管理画面に入れません。\n管理者登録を再度行ってください")
+          showToast("あなたの権限では、管理画面に入れません。\n管理者登録を再度行ってください")
         }else {
                 
           //モーダル
@@ -329,7 +406,7 @@ function bindEvents() {
  
             } catch (error) {
               console.error("ユーザーIDのコピーに失敗:", error);
-              alert("コピーに失敗しました。ユーザーIDを手動でコピーしてください。");
+              showToast("コピーに失敗しました。ユーザーIDを手動でコピーしてください。");
             }
           });
           
@@ -368,7 +445,7 @@ function bindEvents() {
           targetView === "deep-admin" &&
           role !== "deep"
         ) {
-          alert("深い管理画面を利用する権限がありません。");
+          showToast("深い管理画面を利用する権限がありません。");
           setView("student");
           return;
         } 
@@ -379,7 +456,7 @@ function bindEvents() {
           role !== "quick" &&
           role !== "deep"
         ) {
-          alert("管理画面を利用する権限がありません。");
+          showToast("管理画面を利用する権限がありません。");
           setView("student");
           return;
         }
@@ -1216,7 +1293,7 @@ async function loadAdminProfiles() {
 
 async function deleteAdminProfile(profile) {
   if (!profile?.user_id) {
-    alert("削除対象のUser IDが取得できません。");
+    showToast("削除対象のUser IDが取得できません。");
     return;
   }
 
@@ -1280,7 +1357,7 @@ async function deleteAdminProfile(profile) {
       );
     }
 
-    alert(
+    showToast(
       `${profile.display_name || "管理者"}を削除しました。`
     );
 
@@ -1294,7 +1371,7 @@ async function deleteAdminProfile(profile) {
       error
     );
 
-    alert(
+    showToast(
       "管理者の削除に失敗しました。\n\n" +
       error.message
     );
@@ -1513,13 +1590,13 @@ function showAddAdminProfileDialog() {
         roleSelect.value;
 
       if (!userId) {
-        alert("User IDを入力してください。");
+        showToast("User IDを入力してください。");
         userIdInput.focus();
         return;
       }
 
       if (!displayName) {
-        alert("表示名を入力してください。");
+        showToast("表示名を入力してください。");
         displayNameInput.focus();
         return;
       }
@@ -1529,7 +1606,7 @@ function showAddAdminProfileDialog() {
         role !== "quick" &&
         role !== "deep"
       ) {
-        alert("権限を選択してください。");
+        showToast("権限を選択してください。");
         return;
       }
 
@@ -1538,7 +1615,7 @@ function showAddAdminProfileDialog() {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
       if (!uuidPattern.test(userId)) {
-        alert(
+        showToast(
           "User IDの形式が正しくありません。\n" +
           "Supabase Authに表示されるUser IDを確認してください。"
         );
@@ -1609,7 +1686,7 @@ function showAddAdminProfileDialog() {
           );
         }
 
-        alert(
+        showToast(
           `${displayName} さんを管理者として登録しました。`
         );
 
@@ -1627,7 +1704,7 @@ function showAddAdminProfileDialog() {
           error
         );
 
-        alert(
+        showToast(
           "管理者の登録に失敗しました。IDを再確認の上、再度登録してください。\n　エラー内容:" +
           error.message
         );
@@ -1991,6 +2068,13 @@ async function renderStudent() {
   // 文系・理系などのコースはブラウザ側で切り替える
   // ========================================
 
+  const periodList =
+    $(".period-list");
+  
+  periodList?.removeAttribute("hidden");
+  
+  $(".load-error-state")?.remove();
+  
   const optionsData =
     await fetchGasClassOptions(
       state.profile.grade,
@@ -2008,18 +2092,36 @@ async function renderStudent() {
 
     $$(".period-subject").forEach(
       (subjectNode) => {
-
+  
         subjectNode.textContent = "";
-
+  
         subjectNode
           .closest("li")
           ?.classList.remove("is-changed");
-
+  
       }
     );
-
+  
+    const periodList =
+      $(".period-list");
+  
+    if (periodList) {
+      periodList.hidden = true;
+  
+      const oldError =
+        $(".load-error-state");
+  
+      oldError?.remove();
+  
+      periodList.parentElement?.append(
+        createLoadErrorState(
+          "時間割を読み込めませんでした。"
+        )
+      );
+    }
+  
     renderStudentNotices();
-
+  
     return;
   }
   // コース選択欄をJSONに合わせる
@@ -2304,8 +2406,8 @@ async function renderQuickAdmin() {
 
   if (!gasData) {
     matrix.replaceChildren(
-      createEmptyState(
-        "時間割を取得できませんでした。"
+      createLoadErrorState(
+        "時間割を読み込めませんでした。"
       )
     );
     return;
@@ -2491,7 +2593,9 @@ async function renderDeepAdmin() {
 
   if (!gasData) {
     matrix.replaceChildren(
-      createEmptyState("時間割を取得できませんでした。")
+      createLoadErrorState(
+        "時間割を読み込めませんでした。"
+      )
     );
     return;
   }
@@ -2660,7 +2764,7 @@ async function editChange(classItem, period, existingChange) {
     await fetchAllGasSubjects();
 
   if (!allSubjects) {
-    alert(
+    showToast(
       "科目一覧を取得できませんでした。\n" +
       "時間割データを確認してください。"
     );
@@ -2677,7 +2781,7 @@ async function editChange(classItem, period, existingChange) {
     await fetchAllAdminTimetables();
 
   if (!allTimetables) {
-    alert(
+    showToast(
       "重複判定用の時間割を取得できませんでした。\n" +
       "時間割データを確認してください。"
     );
@@ -2715,7 +2819,7 @@ const subjectChange =
       );
 
     if (!validSubject) {
-      alert(
+      showToast(
         `存在しないsubject_idです。\n\n${subjectChange}`
       );
       return;
@@ -2730,12 +2834,12 @@ const subjectChange =
 
   if (sessionError) {
     console.error("認証状態の取得に失敗:", sessionError);
-    alert("ログイン状態の確認に失敗しました。");
+    showToast("ログイン状態の確認に失敗しました。");
     return;
   }
 
   if (!session) {
-    alert("ログインしてください。");
+    showToast("ログインしてください。");
     return;
   }
 
@@ -2845,7 +2949,7 @@ const subjectChange =
       message +=
         "\n\n重複していますが、時間割は変更されています。";
     }
-    alert(message);
+    showToast(message);
 
     // ========================================
     // 重複セル情報をブラウザ側へ更新
@@ -2875,7 +2979,7 @@ const subjectChange =
         historyError
       );
 
-      alert(
+      showToast(
         "時間割は変更されましたが、" +
         "変更履歴の保存に失敗しました。\n\n" +
         historyError.message
@@ -2893,7 +2997,7 @@ const subjectChange =
       error
     );
 
-    alert(
+    showToast(
       "時間割の変更に失敗しました。\n\n" +
       error.message
     );
@@ -2907,7 +3011,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
   const allSubjects = await fetchAllGasSubjects();
 
   if (!allSubjects) {
-    alert(
+    showToast(
       "科目一覧を取得できませんでした。\n" +
       "時間割データを確認してください。"
     );
@@ -2926,7 +3030,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
       await fetchAllAdminTimetables();
 
     if (!allTimetables) {
-      alert(
+      showToast(
         "重複判定用の時間割を取得できませんでした。\n" +
         "時間割データを確認してください。"
       );
@@ -2964,7 +3068,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
       );
 
     if (!validSubject) {
-      alert(
+      showToast(
         `存在しないsubject_idです。\n\n${subjectId}`
       );
       return;
@@ -2985,7 +3089,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
       sessionError
     );
 
-    alert(
+    showToast(
       "ログイン状態の確認に失敗しました。"
     );
 
@@ -2993,7 +3097,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
   }
 
   if (!session) {
-    alert("ログインしてください。");
+    showToast("ログインしてください。");
     return;
   }
 
@@ -3065,7 +3169,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
     // ========================================
     // 完了
     // ========================================
-    alert(
+    showToast(
       `${day}曜日 ${period}限の基本時間割を` +
       `「${subjectId || "空欄"}」に変更しました。`
     );
@@ -3084,7 +3188,7 @@ async function editBaseSubject(classItem, period, currentSubject) {
       error
     );
 
-    alert(
+    showToast(
       "基本時間割の変更に失敗しました。\n\n" +
       error.message
     );
@@ -3101,12 +3205,12 @@ async function handlePostSubmit(event) {
   const endDate = form.elements["post-end"].value;
   // 必須項目の確認
   if (!title || !body || !startDate || !endDate) {
-    alert("タイトル・本文・掲載開始日・掲載終了日を入力してください。");
+    showToast("タイトル・本文・掲載開始日・掲載終了日を入力してください。");
     return;
   }
   // 開始日と終了日の前後関係を確認
   if (endDate < startDate) {
-    alert("掲載終了日は掲載開始日以降の日付にしてください。");
+    showToast("掲載終了日は掲載開始日以降の日付にしてください。");
     return;
   }
   // 日付をSupabase保存用の日時に変換
@@ -3132,7 +3236,7 @@ async function handlePostSubmit(event) {
     .select();
   if (error) {
     console.error("お知らせ投稿失敗:", error);
-    alert("お知らせの投稿に失敗しました。");
+    showToast("お知らせの投稿に失敗しました。");
     return;
   }
   console.log("お知らせ投稿成功:", data);
@@ -3156,11 +3260,11 @@ function handleManagerSubmit(event) {
 
   if (!email) return;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    alert("メールアドレスの形式を確認してください。");
+    showToast("メールアドレスの形式を確認してください。");
     return;
   }
   if (state.data.managers.some((manager) => manager.email === email)) {
-    alert("同じメールアドレスがすでに登録されています。");
+    showToast("同じメールアドレスがすでに登録されています。");
     return;
   }
 
@@ -3172,7 +3276,7 @@ function handleManagerSubmit(event) {
 
 async function deleteNotification(id) {
   if (!id) {
-    alert("削除するお知らせが指定されていません。");
+    showToast("削除するお知らせが指定されていません。");
     return;
   }
 
@@ -3230,7 +3334,7 @@ async function deleteNotification(id) {
       error
     );
 
-    alert(
+    showToast(
       "お知らせの削除に失敗しました。\n\n" +
       error.message
     );
@@ -3488,6 +3592,74 @@ function createEmptyState(message) {
   element.className = "empty-state";
   element.textContent = message;
   return element;
+}
+
+function createLoadErrorState(
+  message = "時間割を読み込めませんでした。"
+) {
+  const container =
+    document.createElement("div");
+
+  container.className =
+    "load-error-state";
+
+  container.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+
+    padding: 30px 20px;
+    margin: 20px 0;
+
+    text-align: center;
+  `;
+
+  const messageElement =
+    document.createElement("p");
+
+  messageElement.textContent = message;
+
+  messageElement.style.cssText = `
+    margin: 0;
+    font-weight: 600;
+  `;
+
+  const reloadButton =
+    document.createElement("button");
+
+  reloadButton.type = "button";
+  reloadButton.textContent = "再読み込み";
+
+  reloadButton.style.cssText = `
+    padding: 8px 20px;
+
+    border: none;
+    border-radius: 6px;
+
+    background: #333;
+    color: #fff;
+
+    cursor: pointer;
+
+    font-size: 0.95rem;
+  `;
+
+  reloadButton.addEventListener(
+    "click",
+    () => {
+      window.location.reload();
+    }
+  );
+
+  container.append(
+    messageElement,
+    reloadButton
+  );
+
+  return container;
 }
 
 function setSelectValue(selector, value) {
