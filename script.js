@@ -4282,6 +4282,20 @@ function checkSubjectSelectionConflict(
         continue;
       }
 
+      // 同じjoint_id同士は重複扱いしない
+      
+      if (
+        String(candidateSubject.subject_id || "").trim() ===
+          otherSubjectId &&
+        Array.isArray(
+          subjectMap.get(
+            String(candidateSubject.subject_id || "").trim()
+          )?.subject_ids
+        )
+      ) {
+        continue;
+      }
+
 
       // ========================================
       // 相手側の科目を展開
