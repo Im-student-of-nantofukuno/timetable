@@ -45,6 +45,8 @@ const state = {
     gasAdminTimetableConflicts: {},
     gasAdminConflictInitialized: false,
     gasAllSubjectsCache: null,
+    gasAllSubjectsPromise : null,
+    gasAllAdminTimetablesPromise : null,
     gasTeacherTimetableCache: {},
   }
 };
@@ -501,6 +503,7 @@ function bindEvents() {
  
         if (targetView === "quick-admin") {
           fetchAllGasSubjects();
+          fetchAllAdminTimetables();
           renderQuickAdmin();
         }
  
@@ -2846,9 +2849,14 @@ async function editChange(classItem, period, existingChange) {
   // ========================================
   // 全学年の科目一覧を取得
   // ========================================
-  const allSubjects =
-    await fetchAllGasSubjects();
-
+  const [
+    allSubjects,
+    allTimetables
+  ] = await Promise.all([
+    fetchAllGasSubjects(),
+    fetchAllAdminTimetables()
+  ]);
+  
   if (!allSubjects) {
     showToast(
       "科目一覧を取得できませんでした。\n" +
@@ -2863,8 +2871,6 @@ async function editChange(classItem, period, existingChange) {
   const day =
     state.adminDay || "月";
 
-  const allTimetables =
-    await fetchAllAdminTimetables();
 
   if (!allTimetables) {
     showToast(
@@ -3095,7 +3101,13 @@ async function editBaseSubject(classItem, period, currentSubject) {
   // ========================================
   // 全学年の科目一覧を取得
   // ========================================
-  const allSubjects = await fetchAllGasSubjects();
+  const [
+    allSubjects,
+    allTimetables
+  ] = await Promise.all([
+    fetchAllGasSubjects(),
+    fetchAllAdminTimetables()
+  ]);
 
   if (!allSubjects) {
     showToast(
@@ -3112,9 +3124,6 @@ async function editBaseSubject(classItem, period, currentSubject) {
       state.deepAdminDay ||
       state.adminDay ||
       "月";
-
-    const allTimetables =
-      await fetchAllAdminTimetables();
 
     if (!allTimetables) {
       showToast(
@@ -4308,64 +4317,96 @@ function clearAdminConflictData(grade) {
     }
   });
 }
+
 // ========================================
 // 全学年のsubject_idを取得
 // ========================================
 async function fetchAllGasSubjects() {
+
   // すでに取得済みなら再利用
   if (state.data.gasAllSubjectsCache) {
+    console.log(
+      "全学年subject一覧：ブラウザキャッシュ使用"
+    );
+
     return state.data.gasAllSubjectsCache;
   }
 
-  try {
-    const response =
-      await fetch("/api/timetable?admin=subjects");
-
-    if (!response.ok) {
-      throw new Error(
-        `科目一覧の取得に失敗しました: ${response.status}`
-      );
-    }
-
-    const result =
-      await response.json();
-
-    if (!result.success) {
-      throw new Error(
-        result.error ||
-        "科目一覧を取得できませんでした"
-      );
-    }
-
-    const subjects =
-      Array.isArray(result.data)
-        ? result.data
-        : [];
-
-    state.data.gasAllSubjectsCache =
-      subjects;
-
+  // 現在取得中なら、その通信を待つ
+  if (state.data.gasAllSubjectsPromise) {
     console.log(
-      "全学年subject一覧:",
-      subjects
+      "全学年subject一覧：取得中の通信を共有"
     );
 
-    return subjects;
-
-  } catch (error) {
-    console.error(
-      "全学年subject一覧取得失敗:",
-      error
-    );
-    
-    showToast(
-      "全学年の科目一覧の取得に失敗しました。",
-      5000,
-      "error"
-    );  
-
-    return null;
+    return await state.data.gasAllSubjectsPromise;
   }
+
+  // まだ取得していないので、新しく通信開始
+  state.data.gasAllSubjectsPromise =
+    (async () => {
+
+      try {
+        const response =
+          await fetch(
+            "/api/timetable?admin=subjects"
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            `科目一覧の取得に失敗しました: ${response.status}`
+          );
+        }
+
+        const result =
+          await response.json();
+
+        if (!result.success) {
+          throw new Error(
+            result.error ||
+            "科目一覧を取得できませんでした"
+          );
+        }
+
+        const subjects =
+          Array.isArray(result.data)
+            ? result.data
+            : [];
+
+        state.data.gasAllSubjectsCache =
+          subjects;
+
+        console.log(
+          "全学年subject一覧:",
+          subjects
+        );
+
+        return subjects;
+
+      } catch (error) {
+
+        console.error(
+          "全学年subject一覧取得失敗:",
+          error
+        );
+
+        showToast(
+          "全学年の科目一覧の取得に失敗しました。",
+          5000,
+          "error"
+        );
+
+        return null;
+
+      } finally {
+
+        // 通信終了後はPromiseを解除
+        state.data.gasAllSubjectsPromise =
+          null;
+      }
+
+    })();
+
+  return await state.data.gasAllSubjectsPromise;
 }
 
 // ========================================
@@ -4373,25 +4414,54 @@ async function fetchAllGasSubjects() {
 // ========================================
 async function fetchAllAdminTimetables() {
 
-  const timetables = {};
+  // 取得中の通信があれば、それを共有
+  if (state.data.gasAllAdminTimetablesPromise) {
 
-  for (const grade of ["1", "2", "3"]) {
+    console.log(
+      "全学年時間割：取得中の通信を共有"
+    );
 
-    const data =
-      await fetchGasAdminTimetable(grade);
-
-    if (!data) {
-      console.error(
-        `重複判定用の${grade}年時間割取得に失敗しました`
-      );
-
-      return null;
-    }
-
-    timetables[grade] = data;
+    return await state.data.gasAllAdminTimetablesPromise;
   }
 
-  return timetables;
+  // 新しく取得開始
+  state.data.gasAllAdminTimetablesPromise =
+    (async () => {
+
+      const timetables = {};
+
+      for (const grade of ["1", "2", "3"]) {
+
+        const data =
+          await fetchGasAdminTimetable(grade);
+
+        if (!data) {
+
+          console.error(
+            `重複判定用の${grade}年時間割取得に失敗しました`
+          );
+
+          return null;
+        }
+
+        timetables[grade] =
+          data;
+      }
+
+      return timetables;
+
+    })();
+
+  try {
+
+    return await state.data.gasAllAdminTimetablesPromise;
+
+  } finally {
+
+    // 通信終了後はPromiseを解除
+    state.data.gasAllAdminTimetablesPromise =
+      null;
+  }
 }
 
 // ========================================
