@@ -3997,66 +3997,133 @@ async function fetchGasAdminTimetable(grade) {
     return cached;
   }
 
-  try {
-    const params =
-      new URLSearchParams({
-        admin: "quick",
-        grade: String(grade)
-      });
+  const params =
+    new URLSearchParams({
+      admin: "quick",
+      grade: String(grade)
+    });
 
-    const url =
-        `/api/timetable?${params.toString()}`;;
+  const url =
+    `/api/timetable?${params.toString()}`;
 
-    console.log(
-      "浅い管理画面GAS request:",
-      url
-    );
+  console.log(
+    "浅い管理画面GAS request:",
+    url
+  );
 
-    const response =
-      await fetch(url);
+  // 最大3回試行
+  const maxAttempts = 3;
 
-    if (!response.ok) {
+  for (
+    let attempt = 1;
+    attempt <= maxAttempts;
+    attempt++
+  ) {
+    try {
+      const response =
+        await fetch(url);
+
+      // 成功
+      if (response.ok) {
+        const result =
+          await response.json();
+
+        console.log(
+          "浅い管理画面GAS response:",
+          result
+        );
+
+        if (!result.success) {
+          throw new Error(
+            result.error ||
+            "GASから時間割を取得できませんでした"
+          );
+        }
+
+        // 学年単位でキャッシュ
+        state.data.gasAdminTimetableCache[
+          cacheKey
+        ] = result.data;
+
+        return result.data;
+      }
+
+      // 一時的なサーバーエラー
+      const retryable =
+        response.status === 502 ||
+        response.status === 503 ||
+        response.status === 504;
+
+      if (
+        retryable &&
+        attempt < maxAttempts
+      ) {
+        console.warn(
+          `浅い管理画面GAS通信失敗: ${response.status} ` +
+          `(${attempt}/${maxAttempts})`
+        );
+
+        // 少し待ってから再試行
+        const waitMs =
+          attempt * 300;
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              waitMs
+            )
+        );
+
+        continue;
+      }
+
+      // 再試行できないエラー
       throw new Error(
         `GAS request failed: ${response.status}`
       );
-    }
 
-    const result =
-      await response.json();
+    } catch (error) {
 
-    console.log(
-      "浅い管理画面GAS response:",
-      result
-    );
-
-    if (!result.success) {
-      throw new Error(
-        result.error ||
-        "GASから時間割を取得できませんでした"
+      console.error(
+        `fetchGasAdminTimetable error ` +
+        `(${attempt}/${maxAttempts}):`,
+        error
       );
+
+      // fetch自体の通信エラーも、
+      // 最後の試行までは再試行する
+      if (
+        attempt < maxAttempts &&
+        !String(error.message || "")
+          .startsWith("GAS request failed:")
+      ) {
+        const waitMs =
+          attempt * 300;
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              waitMs
+            )
+        );
+
+        continue;
+      }
+
+      // 最終的に失敗
+      showToast(
+        "GASから時間割の取得に失敗しました。",
+        5000,
+        "error"
+      );
+
+      return null;
     }
-
-    // 学年単位でキャッシュ
-    state.data.gasAdminTimetableCache[
-      cacheKey
-    ] = result.data;
-
-    return result.data;
-
-  } catch (error) {
-    console.error(
-      "fetchGasAdminTimetable error:",
-      error
-    );
-    
-    showToast(
-      "GASから時間割の取得に失敗しました。",
-      5000,
-      "error"
-    );  
-
-    return null;
   }
+
+  return null;
 }
 
 // ========================================
