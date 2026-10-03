@@ -2396,6 +2396,17 @@ async function renderQuickAdmin() {
           }`
         );
 
+      const tooltipSubjectId =
+        changeSubjectId ||
+        timetableItem?.subject_base ||
+        "";
+      
+      cell.title =
+        getGasAdminSubjectTooltip(
+          gasData,
+          tooltipSubjectId
+        );
+
       cell.type = "button";
 
       cell.dataset.classId =
@@ -2569,6 +2580,12 @@ async function renderDeepAdmin() {
           `matrix-cell ${
             getSubjectClass(classItem.course)
           }${isConflict ? " is-conflict" : ""}`
+        );
+
+      cell.title =
+        getGasAdminSubjectTooltip(
+          gasData,
+          displaySubjectId
         );
 
       cell.type = "button";
@@ -4790,4 +4807,95 @@ function getGasAdminSubjectDisplayName(
     subject?.subject_name ||
     subjectId
   );
+}
+
+// ========================================
+// 管理画面のセルに表示する詳細情報
+// ========================================
+function getGasAdminSubjectTooltip(
+  gasData,
+  subjectId
+) {
+  const id =
+    String(subjectId || "").trim();
+
+  if (!id) {
+    return "";
+  }
+
+  const subjects =
+    gasData?.subjects || [];
+
+  const subject =
+    subjects.find(
+      (item) =>
+        String(item.subject_id).trim() === id
+    );
+
+  if (!subject) {
+    return `科目ID: ${id}`;
+  }
+
+  // 通常科目
+  if (!Array.isArray(subject.subject_ids)) {
+    return [
+      `表示名: ${subject.subject_name || id}`,
+      `先生: ${subject.teacher_id || "―"}`,
+      `場所: ${subject.place || "―"}`
+    ].join("\n");
+  }
+
+  // joint
+  const childSubjects =
+    subject.subject_ids
+      .map((childId) => {
+        return subjects.find(
+          (item) =>
+            String(item.subject_id).trim() ===
+            String(childId).trim()
+        );
+      })
+      .filter(Boolean);
+
+  const teacherList =
+    [
+      ...new Set(
+        childSubjects
+          .map(
+            (item) =>
+              String(
+                item.teacher_id || ""
+              ).trim()
+          )
+          .filter(Boolean)
+      )
+    ];
+
+  const placeList =
+    [
+      ...new Set(
+        childSubjects
+          .map(
+            (item) =>
+              String(
+                item.place || ""
+              ).trim()
+          )
+          .filter(Boolean)
+      )
+    ];
+
+  return [
+    `表示名: ${subject.subject_name || id}`,
+    `先生: ${
+      teacherList.length
+        ? teacherList.join(" / ")
+        : "―"
+    }`,
+    `場所: ${
+      placeList.length
+        ? placeList.join(" / ")
+        : "―"
+    }`
+  ].join("\n");
 }
