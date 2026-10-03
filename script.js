@@ -500,6 +500,7 @@ function bindEvents() {
         setView(targetView);
  
         if (targetView === "quick-admin") {
+          fetchAllGasSubjects();
           renderQuickAdmin();
         }
  
