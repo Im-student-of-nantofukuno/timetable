@@ -1753,7 +1753,7 @@ function showAddAdminProfileDialog() {
         );
 
         showToast(
-          "管理者の登録に失敗しました。IDを再確認の上、再度登録してください。\n　エラー内容:" + error.message,
+          "管理者の登録に失敗しました。IDを再確認の上、再度登録してください。",
           5000,
           "error"
           );  
@@ -1786,6 +1786,12 @@ async function handleGoogleLogin() {
 
   if (error) {
     console.error("Googleログイン失敗:", error);
+
+    showToast(
+      "Googleログインに失敗しました。",
+      5000,
+      "error"
+    );
 
     if (message) {
       message.textContent = "ログインに失敗しました。";
@@ -1934,6 +1940,11 @@ async function fetchTeacherDayTimetable(teacherId, day) {
       console.error(
         "先生時間割取得失敗:",
         data
+      );
+      howToast(
+        "先生の時間割の取得に失敗しました。",
+        5000,
+        "error"
       );
       return null;
     }
@@ -3072,8 +3083,7 @@ const subjectChange =
     );
 
     showToast(
-      "時間割の変更に失敗しました。\n\n" +
-      error.message,
+      "時間割の変更に失敗しました。",
       5000,
       "error"
     );      
@@ -3871,6 +3881,12 @@ async function fetchGasClassOptions(grade, classNo) {
     console.error(
       "fetchGasClassOptions error:",
       error
+    );
+    
+    showToast(
+      "時間割情報の取得に失敗しました。",
+      5000,
+      "error"
     );
 
     return null;
