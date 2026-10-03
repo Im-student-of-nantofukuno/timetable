@@ -331,6 +331,12 @@ function bindEvents() {
           state.adminProfile?.role === "deep"
         ) {
           setView("quick-admin");
+        
+          console.log("浅い管理画面：先読み開始");
+        
+          fetchAllGasSubjects();
+          fetchAllAdminTimetables();
+        
           renderQuickAdmin();
         }else if(
           state.adminProfile?.role === "user"
@@ -502,9 +508,6 @@ function bindEvents() {
         setView(targetView);
  
         if (targetView === "quick-admin") {
-          console.log("浅い管理画面：先読み開始");
-          fetchAllGasSubjects();
-          fetchAllAdminTimetables();
           renderQuickAdmin();
         }
  
@@ -4425,28 +4428,43 @@ async function fetchAllAdminTimetables() {
     return await state.data.gasAllAdminTimetablesPromise;
   }
 
-  // 新しく取得開始
   state.data.gasAllAdminTimetablesPromise =
     (async () => {
 
+      const results =
+        await Promise.all(
+          ["1", "2", "3"].map(
+            async (grade) => {
+
+              const data =
+                await fetchGasAdminTimetable(grade);
+
+              if (!data) {
+                console.error(
+                  `重複判定用の${grade}年時間割取得に失敗しました`
+                );
+
+                return null;
+              }
+
+              return {
+                grade,
+                data
+              };
+            }
+          )
+        );
+
       const timetables = {};
 
-      for (const grade of ["1", "2", "3"]) {
+      for (const result of results) {
 
-        const data =
-          await fetchGasAdminTimetable(grade);
-
-        if (!data) {
-
-          console.error(
-            `重複判定用の${grade}年時間割取得に失敗しました`
-          );
-
+        if (!result) {
           return null;
         }
 
-        timetables[grade] =
-          data;
+        timetables[result.grade] =
+          result.data;
       }
 
       return timetables;
@@ -4459,7 +4477,6 @@ async function fetchAllAdminTimetables() {
 
   } finally {
 
-    // 通信終了後はPromiseを解除
     state.data.gasAllAdminTimetablesPromise =
       null;
   }
