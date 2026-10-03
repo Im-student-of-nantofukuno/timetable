@@ -4824,24 +4824,19 @@ function getGasAdminSubjectTooltip(
   }
 
   const subjects =
-    gasData?.subjects || [];
-  
-  console.log(
-    "管理画面ツールチップ subjects:",
-    subjects
-  );
-  
-  console.log(
-    "管理画面ツールチップ検索ID:",
-    id
-  );
-  
+    Array.isArray(gasData?.subjects)
+      ? gasData.subjects
+      : [];
+
   const subject =
     subjects.find(
       (item) =>
-        String(item.subject_id || "").trim() === id
+        String(
+          item?.subject_id || ""
+        ).trim() === id
     );
-  
+
+  // 科目情報が見つからない場合
   if (!subject) {
     return [
       `科目ID: ${id}`,
@@ -4851,14 +4846,33 @@ function getGasAdminSubjectTooltip(
     ].join("\n");
   }
 
+  // ========================================
+  // 通常科目
+  // ========================================
+  if (
+    !Array.isArray(subject.subject_ids)
+  ) {
+    return [
+      `表示名: ${subject.subject_name || id}`,
+      `先生: ${subject.teacher_id || "―"}`,
+      `場所: ${subject.place || "―"}`
+    ].join("\n");
+  }
+
+  // ========================================
   // joint
+  // ========================================
   const childSubjects =
     subject.subject_ids
       .map((childId) => {
+        const childIdText =
+          String(childId || "").trim();
+
         return subjects.find(
           (item) =>
-            String(item.subject_id).trim() ===
-            String(childId).trim()
+            String(
+              item?.subject_id || ""
+            ).trim() === childIdText
         );
       })
       .filter(Boolean);
@@ -4870,7 +4884,7 @@ function getGasAdminSubjectTooltip(
           .map(
             (item) =>
               String(
-                item.teacher_id || ""
+                item?.teacher_id || ""
               ).trim()
           )
           .filter(Boolean)
@@ -4884,7 +4898,7 @@ function getGasAdminSubjectTooltip(
           .map(
             (item) =>
               String(
-                item.place || ""
+                item?.place || ""
               ).trim()
           )
           .filter(Boolean)
@@ -4894,12 +4908,12 @@ function getGasAdminSubjectTooltip(
   return [
     `表示名: ${subject.subject_name || id}`,
     `先生: ${
-      teacherList.length
+      teacherList.length > 0
         ? teacherList.join(" / ")
         : "―"
     }`,
     `場所: ${
-      placeList.length
+      placeList.length > 0
         ? placeList.join(" / ")
         : "―"
     }`
