@@ -3244,22 +3244,38 @@ function deleteManager(id) {
 }
 
 function ensureValidStudentProfile() {
-  let classItem = getClassByProfile(state.profile);
+  let classItem =
+    getClassByProfile(state.profile);
 
   if (!classItem) {
-    classItem = state.data.classes.find((item) => item.grade === state.profile.grade && item.classNo === state.profile.classNo);
+    classItem =
+      state.data.classes.find(
+        (item) =>
+          item.grade === state.profile.grade &&
+          item.classNo === state.profile.classNo
+      );
   }
 
   if (!classItem) {
-    classItem = state.data.classes.find((item) => item.grade === state.profile.grade) || state.data.classes[0];
+    classItem =
+      state.data.classes.find(
+        (item) =>
+          item.grade === state.profile.grade
+      ) || state.data.classes[0];
   }
 
-  if (!classItem) return;
+  if (!classItem) {
+    return;
+  }
 
+  // 学年・組は有効なクラス情報に合わせる
+  // コースは現在選択中のものを維持する
   state.profile = {
     grade: classItem.grade,
     classNo: classItem.classNo,
-    course: classItem.course
+    course:
+      state.profile.course ||
+      classItem.course
   };
 }
 
