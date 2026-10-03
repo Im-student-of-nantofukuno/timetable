@@ -502,6 +502,7 @@ function bindEvents() {
         setView(targetView);
  
         if (targetView === "quick-admin") {
+          console.log("浅い管理画面：先読み開始");
           fetchAllGasSubjects();
           fetchAllAdminTimetables();
           renderQuickAdmin();
