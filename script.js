@@ -48,6 +48,7 @@ const state = {
     gasAllSubjectsPromise : null,
     gasAllAdminTimetablesPromise : null,
     gasTeacherTimetableCache: {},
+    gasAdminTimetablePromises: {}
   }
 };
 
