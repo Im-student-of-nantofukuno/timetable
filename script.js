@@ -5164,21 +5164,24 @@ async function showSubjectSelectionDialog(
       // ======================================
       filtered.forEach((subject) => {
         const subjectId =
-          String(
-            subject.subject_id || ""
-          ).trim();
+          String(subject.subject_id || "").trim();
       
-        let subjectName =
-          String(
-            subject.subject_name || ""
-          ).trim();
+        const subjectName =
+          String(subject.subject_name || "").trim();
       
-        if (
-          !/^j[A-Z]{2}\d{3}$/.test(subjectId) &&
-          conflictContext
-        ) {
-          subjectName =
-            `${subjectName}_${conflictContext.grade}${conflictContext.classNo}H`;
+        // 表示専用の科目名
+        let displayName = subjectName;
+      
+        // jointではなく通常科目の場合だけHを付ける
+        const hLabel =
+          getHLabelFromSubjectId(
+            subjectId,
+            conflictContext?.allTimetables
+          );
+      
+        if (hLabel) {
+          displayName =
+            `${subjectName}_${hLabel}`;
         }
 
         const button =
@@ -5347,6 +5350,56 @@ function convertGasClassForDisplay(gasClass) {
     label:
       `${gasClass.grade}${gasClass.class_no}H`
   };
+}
+
+// ========================================
+// subject_id から表示用のHラベルを取得
+//
+// class_id（末尾1桁を除く）
+//   ↓
+// GASのclass情報から grade / class_no を取得
+//   ↓
+// 「○○H」を作成
+// ========================================
+function getHLabelFromSubjectId(subjectId, allTimetables) {
+  const id = String(subjectId || "").trim();
+
+  // jointはHラベルを付けない
+  if (/^j[A-Z]{2}\d{3}$/.test(id)) {
+    return "";
+  }
+
+  // 例：
+  // AD201 → 20 + 1
+  // JA151 → 15 + 1
+  const match = id.match(
+    /^[A-Z]{2}(\d{2})\d$/
+  );
+
+  if (!match) {
+    return "";
+  }
+
+  // 最後の1桁を除いた部分 = class_id
+  const classId = match[1];
+
+  // 既存のGAS class情報から探す
+  for (const grade of ["1", "2", "3"]) {
+    const classes =
+      allTimetables?.[grade]?.classes || [];
+
+    const gasClass = classes.find(
+      (item) =>
+        String(item.class_id) === classId
+    );
+
+    if (gasClass) {
+      return `${gasClass.grade}${gasClass.class_no}H`;
+    }
+  }
+
+  // class_idが見つからなかった場合
+  return "";
 }
 
 // ========================================
