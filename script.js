@@ -2072,6 +2072,11 @@ async function renderTeacherTimetable() {
       const names =
         periodData.subjects
           .map((item) => {
+
+            console.log(
+              "先生時間割の科目データ:",
+              periodData.subjects
+            );
       
             const subjectName =
               String(
