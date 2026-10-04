@@ -1244,41 +1244,27 @@ async function loadAdminProfiles() {
     return;
   }
 
-  const {
-    data: {
-      session
-    } = {},
-    error: sessionError
-  } =
-    await window.supabaseClient.auth.getSession();
-  
-  if (sessionError) {
-    console.error(
-      "ログイン状態の取得失敗:",
-      sessionError
-    );
-  
-    list.replaceChildren(
-      createEmptyState(
-        "ログイン状態を確認できませんでした。"
-      )
-    );
-  
-    return;
-  }
-  
-  if (!session) {
-    list.replaceChildren(
-      createEmptyState(
+  try {
+    // 現在のログインセッションを取得
+    const {
+      data: { session },
+      error: sessionError
+    } = await window.supabaseClient.auth.getSession();
+
+    if (sessionError) {
+      throw new Error(
+        "ログイン状態の確認に失敗しました。"
+      );
+    }
+
+    if (!session) {
+      throw new Error(
         "ログインしてください。"
-      )
-    );
-  
-    return;
-  }
-  
-  const response =
-    await fetch(
+      );
+    }
+
+    // 管理者一覧APIから取得
+    const response = await fetch(
       "/api/admin-profile",
       {
         method: "GET",
@@ -1288,130 +1274,125 @@ async function loadAdminProfiles() {
         }
       }
     );
-  
-  const result =
-    await response.json();
-  
-  if (
-    !response.ok ||
-    !result.success
-  ) {
-    console.error(
-      "管理者一覧取得失敗:",
+
+    const result =
+      await response.json();
+
+    console.log(
+      "管理者一覧取得結果:",
       result
     );
-  
-    list.replaceChildren(
-      createEmptyState(
-        result.error ||
-        "管理者一覧を取得できませんでした。"
-      )
-    );
-  
-    return;
-  }
-  
-  const data =
-    result.data || [];
 
-  if (error) {
+    if (
+      !response.ok ||
+      !result.success
+    ) {
+      throw new Error(
+        result.error ||
+        "管理者一覧の取得に失敗しました。"
+      );
+    }
+
+    state.adminProfiles =
+      result.data || [];
+
+    list.replaceChildren();
+
+    if (!state.adminProfiles.length) {
+      list.append(
+        createEmptyState(
+          "登録されている管理者はいません。"
+        )
+      );
+
+      return;
+    }
+
+    state.adminProfiles.forEach(
+      (profile) => {
+
+        const item =
+          document.createElement("li");
+
+        const role =
+          document.createElement("span");
+
+        role.textContent =
+          profile.role ||
+          "unknown";
+
+        const separator =
+          document.createElement("span");
+
+        separator.textContent =
+          " : ";
+
+        const name =
+          document.createElement("span");
+
+        name.textContent =
+          profile.display_name ||
+          "表示名未設定";
+
+        const userId =
+          document.createElement("span");
+
+        userId.textContent =
+          profile.user_id
+            ? ` (${profile.user_id.slice(0, 8)}…)`
+            : "";
+
+        const deleteButton =
+          document.createElement("button");
+
+        deleteButton.type =
+          "button";
+
+        deleteButton.textContent =
+          "削除";
+
+        deleteButton.className =
+          "admin-profile-delete";
+
+        deleteButton.addEventListener(
+          "click",
+          () => {
+            deleteAdminProfile(profile);
+          }
+        );
+
+        item.append(
+          role,
+          separator,
+          name,
+          userId,
+          deleteButton
+        );
+
+        list.append(item);
+      }
+    );
+
+  } catch (error) {
+
     console.error(
       "管理者一覧取得失敗:",
       error
     );
 
     showToast(
-      "管理者一覧の取得に失敗しました。",
+      "管理者一覧の取得に失敗しました。\n" +
+      error.message,
       5000,
       "error"
-      );  
+    );
 
     list.replaceChildren(
       createEmptyState(
         "管理者一覧を取得できませんでした。"
       )
     );
-
-    return;
   }
-
-  console.log(
-    "管理者一覧取得成功:",
-    data
-  );
-
-  state.adminProfiles = data || [];
-
-  list.replaceChildren();
-
-  if (!state.adminProfiles.length) {
-    list.append(
-      createEmptyState(
-        "登録されている管理者はいません。"
-      )
-    );
-
-    return;
-  }
-
-  state.adminProfiles.forEach((profile) => {
-    const item =
-      document.createElement("li");
-
-    const role =
-      document.createElement("span");
-
-    role.textContent =
-      profile.role || "unknown";
-
-    const separator =
-      document.createElement("span");
-
-    separator.textContent =
-      " : ";
-
-    const name =
-      document.createElement("span");
-
-    name.textContent =
-      profile.display_name ||
-      "表示名未設定";
-
-    // User IDは先頭8文字だけ表示
-    const userId =
-      document.createElement("span");
-
-    userId.textContent =
-      profile.user_id
-        ? ` (${profile.user_id.slice(0, 8)}…)`
-        : "";
-
-    // 削除ボタン
-    const deleteButton =
-      document.createElement("button");
-
-    deleteButton.type = "button";
-    deleteButton.textContent = "削除";
-    deleteButton.className =
-      "admin-profile-delete";
-
-    deleteButton.addEventListener(
-      "click",
-      () => {
-        deleteAdminProfile(profile);
-      }
-    );
-
-    item.append(
-      role,
-      separator,
-      name,
-      userId,
-      deleteButton
-    );
-
-    list.append(item);
-  });
 }
 
 async function deleteAdminProfile(profile) {
