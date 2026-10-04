@@ -2000,7 +2000,14 @@ async function renderTeacherTimetable() {
       "student-day"
     )?.value || "月";
 
-
+  const periodList =
+    $(".period-list");
+  
+  // 読み込み中は時間割セルを表示しない
+  if (periodList) {
+    periodList.hidden = true;
+  }
+  
   // いったん全時限を空にする
   $$(
     ".period-subject"
@@ -2037,7 +2044,11 @@ async function renderTeacherTimetable() {
   if (!data) {
     return;
   }
-
+  
+  // 読み込み完了後に時間割を表示
+  if (periodList) {
+    periodList.hidden = false;
+  }
 
   const timetable =
     data.timetable || [];
@@ -2194,7 +2205,10 @@ async function renderStudent() {
   const periodList =
     $(".period-list");
   
-  periodList?.removeAttribute("hidden");
+  // 読み込み中は時間割セルを表示しない
+  if (periodList) {
+    periodList.hidden = true;
+  }
   
   $(".load-error-state")?.remove();
   
@@ -2377,6 +2391,12 @@ async function renderStudent() {
     }
 
   }
+
+    // 読み込み完了後に時間割を表示
+  if (periodList) {
+    periodList.hidden = false;
+  }
+    
   const todayTimetable =
     gasData.timetable?.[selectedDay] || [];
   
