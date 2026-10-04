@@ -2075,7 +2075,7 @@ async function renderTeacherTimetable() {
 
             console.log(
               "先生時間割の科目データ:",
-              periodData.subjects
+              item,
             );
       
             const subjectName =
