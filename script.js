@@ -5105,34 +5105,40 @@ async function showSubjectSelectionDialog(
 
         const filtered =
           subjects.filter((subject) => {
-
+        
           const subjectId =
             String(
               subject.subject_id || ""
             ).trim();
-          
-          let subjectName =
+        
+          const subjectName =
             String(
               subject.subject_name || ""
             ).trim();
-          
-          if (
-            !/^j[A-Z]{2}\d{3}$/.test(subjectId) &&
-            conflictContext
-          ) {
-            subjectName =
-              `${subjectName}_${conflictContext.grade}${conflictContext.classNo}H`;
-          }
-          
+        
+          const hLabel =
+            getHLabelFromSubjectId(
+              subjectId,
+              conflictContext?.allTimetables
+            );
+        
+          const displayName =
+            hLabel
+              ? `${subjectName}_${hLabel}`
+              : subjectName;
+        
           if (!keyword) {
             return true;
           }
-          
+        
           return (
             subjectId
               .toLowerCase()
               .includes(keyword) ||
             subjectName
+              .toLowerCase()
+              .includes(keyword) ||
+            displayName
               .toLowerCase()
               .includes(keyword)
           );
@@ -5239,7 +5245,7 @@ async function showSubjectSelectionDialog(
 
         // 「科目ID : 科目名」の形式
         button.textContent =
-          `${subjectId} : ${subjectName}`;
+          `${subjectId} : ${displayName}`;
         
         button.addEventListener(
           "click",
