@@ -129,7 +129,7 @@ async function init() {
     await loadInitialData();
     bindEvents();
     await setupAuth();
-    restoreProfile();
+    await restoreProfile();
     updateTargetSummary();
     renderAll();
 
@@ -1855,11 +1855,78 @@ async function handleGoogleLogin() {
   }
 }
 
-function restoreProfile() {
-  state.profile = readStored(STORAGE_KEYS.profile, state.profile);
-  setSelectValue("#student-grade", state.profile.grade);
-  setSelectValue("#student-class", state.profile.classNo);
-  setSelectValue("#student-course", state.profile.course);
+async function restoreProfile() {
+  state.profile = readStored(
+    STORAGE_KEYS.profile,
+    state.profile
+  );
+
+  // ========================================
+  // 先生モードを復元
+  // ========================================
+  if (state.profile.grade === "teacher") {
+
+    // 学年select
+    setSelectValue(
+      "#student-grade",
+      "teacher"
+    );
+
+    // 組・コースを非表示
+    const classControl =
+      $("#student-class")?.closest("label");
+
+    const courseControl =
+      $("#student-course")?.closest("label");
+
+    const teacherControl =
+      $("#student-teacher-control");
+
+    if (classControl) {
+      classControl.hidden = true;
+    }
+
+    if (courseControl) {
+      courseControl.hidden = true;
+    }
+
+    if (teacherControl) {
+      teacherControl.hidden = false;
+    }
+
+    // 先生一覧を読み込む
+    await loadTeacherOptions();
+
+    // 保存されていた先生を復元
+    setSelectValue(
+      "#student-teacher",
+      state.profile.teacherId || ""
+    );
+
+    updateTeacherPickerLabel();
+
+    return;
+  }
+
+  // ========================================
+  // 通常の生徒モードを復元
+  // ========================================
+
+  setSelectValue(
+    "#student-grade",
+    state.profile.grade
+  );
+
+  setSelectValue(
+    "#student-class",
+    state.profile.classNo
+  );
+
+  setSelectValue(
+    "#student-course",
+    state.profile.course
+  );
+
   ensureValidStudentProfile();
 }
 
@@ -3579,6 +3646,11 @@ function deleteManager(id) {
 }
 
 function ensureValidStudentProfile() {
+  // 先生モードは生徒用プロフィール検証の対象外
+  if (state.profile.grade === "teacher") {
+    return;
+  }
+
   let classItem =
     getClassByProfile(state.profile);
 
