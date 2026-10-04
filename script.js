@@ -2020,8 +2020,13 @@ async function renderTeacherTimetable() {
   if (!teacherId) {
     return;
   }
-
-
+  
+  // class_id → 年組を調べるためのデータを用意
+  if (!state.data.gasAllAdminTimetables) {
+    state.data.gasAllAdminTimetables =
+      await fetchAllAdminTimetables();
+  }
+  
   const data =
     await fetchTeacherDayTimetable(
       teacherId,
@@ -2072,11 +2077,6 @@ async function renderTeacherTimetable() {
       const names =
         periodData.subjects
           .map((item) => {
-
-            console.log(
-              "先生時間割の科目データ:",
-              item
-            );
       
             const subjectName =
               String(
@@ -2088,10 +2088,19 @@ async function renderTeacherTimetable() {
                 item.subject_id || ""
               ).trim();
       
-            // subject_idからHを取得
+            // jointはGASから返ってきた名前をそのまま表示
+            if (
+              /^j[A-Z]{2}\d{3}$/.test(
+                subjectId
+              )
+            ) {
+              return subjectName;
+            }
+      
+            // 通常科目は class_id → 年組 → H を作る
             const hLabel =
-              getHLabelFromSubjectId(
-                subjectId,
+              getHLabelFromClassId(
+                item.class_id,
                 state.data.gasAllAdminTimetables
               );
       
@@ -5430,6 +5439,37 @@ function getHLabelFromSubjectId(subjectId, allTimetables) {
   }
 
   // class_idが見つからなかった場合
+  return "";
+}
+
+function getHLabelFromClassId(
+  classId,
+  allTimetables
+) {
+  const targetClassId =
+    String(classId || "").trim();
+
+  if (!targetClassId) {
+    return "";
+  }
+
+  for (const grade of ["1", "2", "3"]) {
+
+    const classes =
+      allTimetables?.[grade]?.classes || [];
+
+    const gasClass =
+      classes.find(
+        c =>
+          String(c.class_id) ===
+          targetClassId
+      );
+
+    if (gasClass) {
+      return `${gasClass.grade}${gasClass.class_no}H`;
+    }
+  }
+
   return "";
 }
 
