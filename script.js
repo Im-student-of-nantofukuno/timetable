@@ -2071,13 +2071,33 @@ async function renderTeacherTimetable() {
       // 同じ時限に複数クラスを担当している場合
       const names =
         periodData.subjects
-          .map(
-            (item) =>
-              item.subject_name || ""
-          )
+          .map((item) => {
+      
+            const subjectName =
+              String(
+                item.subject_name || ""
+              ).trim();
+      
+            const subjectId =
+              String(
+                item.subject_id || ""
+              ).trim();
+      
+            // subject_idからHを取得
+            const hLabel =
+              getHLabelFromSubjectId(
+                subjectId,
+                state.data.gasAllAdminTimetables
+              );
+      
+            if (hLabel) {
+              return `${subjectName}_${hLabel}`;
+            }
+      
+            return subjectName;
+          })
           .filter(Boolean);
-
-
+      
       subjectNode.textContent =
         names.join(" / ");
     }
