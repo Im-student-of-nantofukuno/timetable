@@ -2092,11 +2092,7 @@ async function renderTeacherTimetable() {
             // joint
             // joint_nameはそのまま表示
             // =====================================
-            if (
-              /^j[A-Z]{2}\d{3}$/.test(
-                subjectId
-              )
-            ) {
+            if (item.is_joint === true) {
               return subjectName;
             }
       
