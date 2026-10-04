@@ -33,7 +33,6 @@ export async function onRequestPost(context) {
     const accessToken =
       authorization.substring(7);
 
-
     // ========================================
     // 2. Supabaseで現在のユーザーを確認
     // ========================================
