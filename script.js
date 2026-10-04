@@ -1244,9 +1244,75 @@ async function loadAdminProfiles() {
     return;
   }
 
-  const { data, error } = await window.supabaseClient
-    .from("admin_profiles")
-    .select("user_id, display_name, role");
+  const {
+    data: {
+      session
+    } = {},
+    error: sessionError
+  } =
+    await window.supabaseClient.auth.getSession();
+  
+  if (sessionError) {
+    console.error(
+      "ログイン状態の取得失敗:",
+      sessionError
+    );
+  
+    list.replaceChildren(
+      createEmptyState(
+        "ログイン状態を確認できませんでした。"
+      )
+    );
+  
+    return;
+  }
+  
+  if (!session) {
+    list.replaceChildren(
+      createEmptyState(
+        "ログインしてください。"
+      )
+    );
+  
+    return;
+  }
+  
+  const response =
+    await fetch(
+      "/api/admin-profile",
+      {
+        method: "GET",
+        headers: {
+          "Authorization":
+            `Bearer ${session.access_token}`
+        }
+      }
+    );
+  
+  const result =
+    await response.json();
+  
+  if (
+    !response.ok ||
+    !result.success
+  ) {
+    console.error(
+      "管理者一覧取得失敗:",
+      result
+    );
+  
+    list.replaceChildren(
+      createEmptyState(
+        result.error ||
+        "管理者一覧を取得できませんでした。"
+      )
+    );
+  
+    return;
+  }
+  
+  const data =
+    result.data || [];
 
   if (error) {
     console.error(
@@ -1296,7 +1362,7 @@ async function loadAdminProfiles() {
       document.createElement("span");
 
     role.textContent =
-      profile.role || "role未設定";
+      profile.role || "unknown";
 
     const separator =
       document.createElement("span");
