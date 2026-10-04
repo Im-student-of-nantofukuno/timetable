@@ -274,6 +274,288 @@ export async function onRequestPost(context) {
   }
 }
 
+export async function onRequestGet(context) {
+  try {
+    const request = context.request;
+    const env = context.env;
+
+    // ========================================
+    // 1. Authorization確認
+    // ========================================
+
+    const authorization =
+      request.headers.get("Authorization");
+
+    if (!authorization) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "ログイン情報がありません"
+        },
+        401
+      );
+    }
+
+    if (!authorization.startsWith("Bearer ")) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "不正なAuthorizationです"
+        },
+        401
+      );
+    }
+
+    const accessToken =
+      authorization.substring(7);
+
+
+    // ========================================
+    // 2. 現在のユーザーを確認
+    // ========================================
+
+    const userResponse = await fetch(
+      `${env.SUPABASE_URL}/auth/v1/user`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization":
+            `Bearer ${accessToken}`,
+          "apikey":
+            env.SUPABASE_ANON_KEY
+        }
+      }
+    );
+
+    if (!userResponse.ok) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "Supabase認証に失敗しました"
+        },
+        401
+      );
+    }
+
+    const currentUser =
+      await userResponse.json();
+
+    if (
+      !currentUser ||
+      !currentUser.id
+    ) {
+      return jsonResponse(
+        {
+          success: false,
+          error:
+            "ユーザー情報を取得できませんでした"
+        },
+        401
+      );
+    }
+
+
+    // ========================================
+    // 3. deep権限確認
+    // ========================================
+
+    const profileResponse =
+      await fetch(
+        `${env.SUPABASE_URL}/rest/v1/admin_profiles?select=role&user_id=eq.${encodeURIComponent(currentUser.id)}`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization":
+              `Bearer ${accessToken}`,
+            "apikey":
+              env.SUPABASE_ANON_KEY
+          }
+        }
+      );
+
+    if (!profileResponse.ok) {
+      return jsonResponse(
+        {
+          success: false,
+          error:
+            "管理者権限の確認に失敗しました"
+        },
+        500
+      );
+    }
+
+    const profiles =
+      await profileResponse.json();
+
+    const currentRole =
+      profiles.length > 0
+        ? profiles[0].role
+        : null;
+
+    if (currentRole !== "deep") {
+      return jsonResponse(
+        {
+          success: false,
+          error:
+            "管理者一覧を取得する権限がありません"
+        },
+        403
+      );
+    }
+
+
+    // ========================================
+    // 4. admin_profiles取得
+    // ========================================
+
+    const adminProfilesResponse =
+      await fetch(
+        `${env.SUPABASE_URL}/rest/v1/admin_profiles?select=user_id,display_name,role`,
+        {
+          method: "GET",
+          headers: {
+            "apikey":
+              env.SUPABASE_SERVICE_ROLE_KEY,
+
+            "Authorization":
+              `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        }
+      );
+
+    if (!adminProfilesResponse.ok) {
+      return jsonResponse(
+        {
+          success: false,
+          error:
+            "管理者プロフィールの取得に失敗しました"
+        },
+        500
+      );
+    }
+
+    const adminProfiles =
+      await adminProfilesResponse.json();
+
+
+    // ========================================
+    // 5. Authenticationユーザー取得
+    // ========================================
+
+    const authUsersResponse =
+      await fetch(
+        `${env.SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
+        {
+          method: "GET",
+          headers: {
+            "apikey":
+              env.SUPABASE_SERVICE_ROLE_KEY,
+
+            "Authorization":
+              `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        }
+      );
+
+    if (!authUsersResponse.ok) {
+      const text =
+        await authUsersResponse.text();
+
+      console.error(
+        "Authentication users取得エラー:",
+        authUsersResponse.status,
+        text
+      );
+
+      return jsonResponse(
+        {
+          success: false,
+          error:
+            "Authenticationユーザー一覧の取得に失敗しました"
+        },
+        500
+      );
+    }
+
+    const authUsersData =
+      await authUsersResponse.json();
+
+    const authUsers =
+      Array.isArray(authUsersData)
+        ? authUsersData
+        : authUsersData.users || [];
+
+
+    // ========================================
+    // 6. admin_profilesと結合
+    // ========================================
+
+    const adminProfileMap =
+      new Map(
+        adminProfiles.map(profile => [
+          String(profile.user_id),
+          profile
+        ])
+      );
+
+    const users =
+      authUsers.map(user => {
+
+        const userId =
+          String(user.id || "");
+
+        const profile =
+          adminProfileMap.get(userId);
+
+        if (profile) {
+          return {
+            user_id: userId,
+            display_name:
+              profile.display_name ||
+              user.user_metadata?.display_name ||
+              "表示名未設定",
+            role:
+              profile.role || ""
+          };
+        }
+
+        // admin_profilesに存在しない
+        return {
+          user_id: userId,
+          display_name:
+            user.user_metadata?.display_name ||
+            "表示名未設定",
+          role: null
+        };
+      });
+
+
+    // ========================================
+    // 7. 成功
+    // ========================================
+
+    return jsonResponse({
+      success: true,
+      data: users
+    });
+
+  } catch (error) {
+
+    console.error(
+      "admin-profile GET error:",
+      error
+    );
+
+    return jsonResponse(
+      {
+        success: false,
+        error: error.message
+      },
+      500
+    );
+  }
+}
+
 export async function onRequestDelete(context) {
   try {
     const request = context.request;
@@ -437,7 +719,7 @@ export async function onRequestDelete(context) {
         {
           success: false,
           error:
-            "自分自身の管理者権限は削除できません"
+            "自分自身のアカウントは削除できません"
         },
         400
       );
@@ -445,10 +727,10 @@ export async function onRequestDelete(context) {
 
 
     // ========================================
-    // 6. 管理者プロフィールを削除
+    // 6. admin_profilesから削除
     // ========================================
 
-    const deleteResponse =
+    const deleteProfileResponse =
       await fetch(
         `${env.SUPABASE_URL}/rest/v1/admin_profiles?user_id=eq.${encodeURIComponent(targetUserId)}`,
         {
@@ -466,52 +748,85 @@ export async function onRequestDelete(context) {
         }
       );
 
-    const deleteText =
-      await deleteResponse.text();
+    const deleteProfileText =
+      await deleteProfileResponse.text();
 
-    let deleteData;
+    let deleteProfileData;
 
     try {
-      deleteData =
-        JSON.parse(deleteText);
+      deleteProfileData =
+        JSON.parse(deleteProfileText);
     } catch {
-      deleteData =
-        deleteText;
+      deleteProfileData =
+        deleteProfileText;
     }
 
-    if (!deleteResponse.ok) {
+    if (!deleteProfileResponse.ok) {
       console.error(
         "admin_profiles delete error:",
-        deleteResponse.status,
-        deleteData
+        deleteProfileResponse.status,
+        deleteProfileData
       );
 
       return jsonResponse(
         {
           success: false,
           error:
-            "管理者の削除に失敗しました"
+            "管理者プロフィールの削除に失敗しました"
         },
-        deleteResponse.status
+        deleteProfileResponse.status
       );
     }
 
 
     // ========================================
-    // 7. 削除対象が存在しなかった場合
+    // 7. Authenticationからユーザー削除
     // ========================================
 
-    if (
-      !Array.isArray(deleteData) ||
-      deleteData.length === 0
-    ) {
+    const deleteAuthResponse =
+      await fetch(
+        `${env.SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(targetUserId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "apikey":
+              env.SUPABASE_SERVICE_ROLE_KEY,
+
+            "Authorization":
+              `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
+        }
+      );
+
+    const deleteAuthText =
+      await deleteAuthResponse.text();
+
+    let deleteAuthData;
+
+    try {
+      deleteAuthData =
+        JSON.parse(deleteAuthText);
+    } catch {
+      deleteAuthData =
+        deleteAuthText;
+    }
+
+    if (!deleteAuthResponse.ok) {
+      console.error(
+        "Authentication user delete error:",
+        deleteAuthResponse.status,
+        deleteAuthData
+      );
+
       return jsonResponse(
         {
           success: false,
           error:
-            "指定された管理者が見つかりません"
+            "Authenticationからユーザーを削除できませんでした",
+          detail:
+            deleteAuthData
         },
-        404
+        deleteAuthResponse.status
       );
     }
 
@@ -522,7 +837,13 @@ export async function onRequestDelete(context) {
 
     return jsonResponse({
       success: true,
-      data: deleteData
+      data: {
+        user_id: targetUserId,
+        admin_profile_deleted:
+          Array.isArray(deleteProfileData) &&
+          deleteProfileData.length > 0,
+        authentication_deleted: true
+      }
     });
 
   } catch (error) {
