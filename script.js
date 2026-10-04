@@ -2088,7 +2088,10 @@ async function renderTeacherTimetable() {
                 item.subject_id || ""
               ).trim();
       
-            // jointはGASから返ってきた名前をそのまま表示
+            // =====================================
+            // joint
+            // joint_nameはそのまま表示
+            // =====================================
             if (
               /^j[A-Z]{2}\d{3}$/.test(
                 subjectId
@@ -2097,7 +2100,10 @@ async function renderTeacherTimetable() {
               return subjectName;
             }
       
-            // 通常科目は class_id → 年組 → H を作る
+            // =====================================
+            // 通常科目
+            // class_idからHを生成
+            // =====================================
             const hLabel =
               getHLabelFromClassId(
                 item.class_id,
