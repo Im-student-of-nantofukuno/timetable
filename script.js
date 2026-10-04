@@ -2902,18 +2902,20 @@ async function editChange(classItem, period, existingChange) {
     return;
   }
 
-const subjectChange =
-  await showSubjectSelectionDialog(
-    allSubjects,
-    current,
-    `${day}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`,
-    {
-      classId: classItem.id,
-      day,
-      period,
-      allTimetables
-    }
-  );
+  const subjectChange =
+    await showSubjectSelectionDialog(
+      allSubjects,
+      current,
+      `${day}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`,
+      {
+        classId: classItem.id,
+        day,
+        period,
+        allTimetables,
+        grade: classItem.grade,
+        classNo: classItem.classNo
+      }
+    );
 
   if (subjectChange === null) {
     return;
@@ -5158,15 +5160,15 @@ async function showSubjectSelectionDialog(
           String(
             subject.subject_id || ""
           ).trim();
-
+      
         let subjectName =
           String(
             subject.subject_name || ""
           ).trim();
-        
+      
         if (!/^j[A-Z]{2}\d{3}$/.test(subjectId)) {
           subjectName =
-            `${subjectName}_${classItem.grade}${classItem.classNo}H`;
+            `${subjectName}_${conflictContext.grade}${conflictContext.classNo}H`;
         }
 
         const button =
