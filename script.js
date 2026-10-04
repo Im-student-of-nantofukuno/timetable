@@ -5109,15 +5109,10 @@ async function showSubjectSelectionDialog(
               subject.subject_id || ""
             ).trim();
 
-          let subjectName =
+          const subjectName =
             String(
               subject.subject_name || ""
             ).trim();
-          
-          if (!/^j[A-Z]{2}\d{3}$/.test(subjectId)) {
-            subjectName =
-              `${subjectName}_${classItem.grade}${classItem.classNo}H`;
-          }
 
           if (!keyword) {
             return true;
@@ -5164,10 +5159,15 @@ async function showSubjectSelectionDialog(
             subject.subject_id || ""
           ).trim();
 
-        const subjectName =
+        let subjectName =
           String(
             subject.subject_name || ""
           ).trim();
+        
+        if (!/^j[A-Z]{2}\d{3}$/.test(subjectId)) {
+          subjectName =
+            `${subjectName}_${classItem.grade}${classItem.classNo}H`;
+        }
 
         const button =
           document.createElement("button");
