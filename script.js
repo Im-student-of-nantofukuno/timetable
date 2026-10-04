@@ -5110,16 +5110,24 @@ async function showSubjectSelectionDialog(
             String(
               subject.subject_id || ""
             ).trim();
-
-          const subjectName =
+          
+          let subjectName =
             String(
               subject.subject_name || ""
             ).trim();
-
+          
+          if (
+            !/^j[A-Z]{2}\d{3}$/.test(subjectId) &&
+            conflictContext
+          ) {
+            subjectName =
+              `${subjectName}_${conflictContext.grade}${conflictContext.classNo}H`;
+          }
+          
           if (!keyword) {
             return true;
           }
-
+          
           return (
             subjectId
               .toLowerCase()
@@ -5155,7 +5163,6 @@ async function showSubjectSelectionDialog(
       // 科目ボタン
       // ======================================
       filtered.forEach((subject) => {
-
         const subjectId =
           String(
             subject.subject_id || ""
@@ -5166,7 +5173,10 @@ async function showSubjectSelectionDialog(
             subject.subject_name || ""
           ).trim();
       
-        if (!/^j[A-Z]{2}\d{3}$/.test(subjectId)) {
+        if (
+          !/^j[A-Z]{2}\d{3}$/.test(subjectId) &&
+          conflictContext
+        ) {
           subjectName =
             `${subjectName}_${conflictContext.grade}${conflictContext.classNo}H`;
         }
