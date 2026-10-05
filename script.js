@@ -1335,12 +1335,54 @@ async function loadAdminProfiles() {
           "表示名未設定";
 
         const userId =
-          document.createElement("span");
-
+          document.createElement("button");
+        
+        userId.type = "button";
+        
+        userId.className =
+          "admin-profile-id-copy";
+        
         userId.textContent =
           profile.user_id
             ? ` (${profile.user_id.slice(0, 8)}…)`
             : "";
+        
+        userId.title =
+          "クリックしてUser IDをコピー";
+        
+        userId.addEventListener(
+          "click",
+          async () => {
+        
+            if (!profile.user_id) {
+              return;
+            }
+        
+            try {
+        
+              await navigator.clipboard.writeText(
+                profile.user_id
+              );
+        
+              showToast(
+                "User IDをコピーしました。"
+              );
+        
+            } catch (error) {
+        
+              console.error(
+                "User IDコピー失敗:",
+                error
+              );
+        
+              showToast(
+                "User IDのコピーに失敗しました。",
+                5000,
+                "error"
+              );
+            }
+          }
+        );
 
         const deleteButton =
           document.createElement("button");
@@ -2888,6 +2930,9 @@ async function renderDeepAdmin() {
     classes.length
   );
 
+    // 先生の表示名を取得してから時間割セルを作る
+  await loadAdminProfiles();
+    
   // ここで既存セルを全部消す
   matrix.replaceChildren();
 
@@ -2982,8 +3027,6 @@ async function renderDeepAdmin() {
   });
 
   renderManagers();
-    
-  await loadAdminProfiles();
 }
 
 function renderManagers() {
@@ -5676,6 +5719,33 @@ function getGasAdminSubjectTooltip(
         ).trim() === id
     );
 
+  // ========================================
+  // teacher_id → display_name
+  // ========================================
+  const getTeacherDisplayName =
+    (teacherId) => {
+
+      const id =
+        String(teacherId || "").trim();
+
+      if (!id) {
+        return "";
+      }
+
+      const profile =
+        (state.adminProfiles || []).find(
+          (item) =>
+            String(
+              item?.user_id || ""
+            ).trim() === id
+        );
+
+      return (
+        profile?.display_name ||
+        id
+      );
+    };
+
   // 科目情報が見つからない場合
   if (!subject) {
     return [
@@ -5692,9 +5762,15 @@ function getGasAdminSubjectTooltip(
   if (
     !Array.isArray(subject.subject_ids)
   ) {
+
+    const teacherName =
+      getTeacherDisplayName(
+        subject.teacher_id
+      );
+
     return [
       `表示名: ${subject.subject_name || id}`,
-      `先生: ${subject.teacher_id || "―"}`,
+      `先生: ${teacherName || "―"}`,
       `場所: ${subject.place || "―"}`
     ].join("\n");
   }
@@ -5705,6 +5781,7 @@ function getGasAdminSubjectTooltip(
   const childSubjects =
     subject.subject_ids
       .map((childId) => {
+
         const childIdText =
           String(childId || "").trim();
 
@@ -5731,6 +5808,16 @@ function getGasAdminSubjectTooltip(
       )
     ];
 
+  const teacherNameList =
+    teacherList
+      .map(
+        (teacherId) =>
+          getTeacherDisplayName(
+            teacherId
+          )
+      )
+      .filter(Boolean);
+
   const placeList =
     [
       ...new Set(
@@ -5748,8 +5835,8 @@ function getGasAdminSubjectTooltip(
   return [
     `表示名: ${subject.subject_name || id}`,
     `先生: ${
-      teacherList.length > 0
-        ? teacherList.join(" / ")
+      teacherNameList.length > 0
+        ? teacherNameList.join(" / ")
         : "―"
     }`,
     `場所: ${
