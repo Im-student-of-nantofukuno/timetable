@@ -518,14 +518,16 @@ export async function onRequestGet(context) {
           };
         }
 
-        // admin_profilesに存在しない
-        return {
-          user_id: userId,
-          display_name:
-            user.user_metadata?.display_name ||
-            "表示名未設定",
-          role: null
-        };
+        // admin_profilesに存在しないユーザーのみ
+          return {
+            user_id: userId,
+            display_name:
+              user.user_metadata?.display_name ||
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              "表示名未設定",
+            role: null
+          };
       });
 
 
