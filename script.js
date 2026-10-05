@@ -1335,20 +1335,21 @@ async function loadAdminProfiles() {
           "表示名未設定";
 
         const userId =
-          document.createElement("button");
-        
-        userId.type = "button";
+          document.createElement("span");
         
         userId.className =
           "admin-profile-id-copy";
         
         userId.textContent =
           profile.user_id
-            ? ` (${profile.user_id.slice(0, 8)}…)`
+            ? `(${profile.user_id.slice(0, 8)}…)`
             : "";
         
         userId.title =
           "クリックしてUser IDをコピー";
+        
+        userId.style.cursor =
+          "pointer";
         
         userId.addEventListener(
           "click",
@@ -1383,7 +1384,6 @@ async function loadAdminProfiles() {
             }
           }
         );
-
         const deleteButton =
           document.createElement("button");
 
