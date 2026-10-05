@@ -4,7 +4,7 @@ if (FORCE_RESET) {
 }
 
 // ========================================
-// Google Apps Script API
+// Google Apps Script API 
 // ========================================
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxfwsvnTbewcHwfBvblpE9UoyqvBAqpzyBzieCTVQ9mevnpmtc_OJgJ9VeFG14FgrUh/exec";
 
