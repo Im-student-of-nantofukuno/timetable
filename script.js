@@ -4320,6 +4320,10 @@ async function fetchGasAdminTimetable(grade) {
                 `${response.status} ` +
                 `(${attempt}/${maxAttempts})`
               );
+              showToast(`浅い管理画面GAS通信失敗: ` + `${response.status} ` +"\n再度取得しています"
+                    ,3000
+                    ,"error"
+                       )
 
               const waitMs =
                 attempt * 300;
