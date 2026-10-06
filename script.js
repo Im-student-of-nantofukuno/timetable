@@ -21,7 +21,7 @@ const STORAGE_KEYS = {
 window.CLASS_COURSE_OVERRIDES = {};
 
 window.TIMETABLE_DATA = {
-  periods: [1,2,3,4,5,6],
+  periods: [1,2,3,4,5,6,7],//セルを7限目までつくる
   courses: {},
   classes: [],
   baseTimetables: {}
