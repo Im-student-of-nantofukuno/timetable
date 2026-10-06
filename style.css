@@ -201,7 +201,7 @@ textarea:focus-visible {
 }
 
 .icon-button[data-view-button="student"] {
-  background-image: url("アイコン目玉.png");
+  background-image: url("アイコン目玉.jpg");
 }
 
 .icon-button[data-view-button="login"],
@@ -210,7 +210,7 @@ textarea:focus-visible {
 }
 
 .icon-button[data-view-button="deep-admin"] {
-  background-image: url("アイコン工具.png");
+  background-image: url("アイコン工具.jpg");
 }
 
 .screen {
