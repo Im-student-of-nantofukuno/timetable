@@ -275,18 +275,18 @@ async function loadInitialData() {
   const { data, error } = await window.supabaseClient
     .from("notifications")
     .select("*");
+  
   if (error) {
     console.error("notifications取得失敗:", error);
-    // Supabase取得失敗時は一時的にlocalStorageを使用
-    state.data.notifications = readStored(
-      STORAGE_KEYS.notifications,
-      window.NOTIFICATIONS || []
-    );
+  
+    // Supabase取得失敗時はお知らせを空にする
+    state.data.notifications = [];
+  
     showToast(
       "お知らせ・変更履歴 の取得に失敗しました。",
       5000,
       "error"
-      );  
+    );
   } else {
     console.log("notifications取得成功:", data);
     state.data.notifications = data || [];
