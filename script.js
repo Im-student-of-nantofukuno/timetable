@@ -15,6 +15,20 @@ const STORAGE_KEYS = {
   changes: "timetable.changes",
   managers: "timetable.managers"
 };
+// ========================================
+// 昔local環境で作ってた時の名残 今は空
+// ========================================
+window.CLASS_COURSE_OVERRIDES = {};
+
+window.TIMETABLE_DATA = {
+  periods: [],
+  courses: {},
+  classes: [],
+  baseTimetables: {}
+};
+
+window.MANAGERS = [];
+
 
 const state = {
   view: "student",
