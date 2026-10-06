@@ -13,7 +13,6 @@ const STORAGE_KEYS = {
   baseTimetables: "timetable.baseTimetables",
   classCourses: "timetable.classCourses",
   changes: "timetable.changes",
-  notifications: "timetable.notifications",
   managers: "timetable.managers"
 };
 
