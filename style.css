@@ -1203,24 +1203,9 @@ button.matrix-cell:hover {
   justify-content: center;
 }
 
-/* infoを小さく */
-.info-icon-button {
-  display: none;
+.view-actions [data-view-button="quick-admin"] {
   width: clamp(42px, 3.2vw, 60px);
 }
-
-/* 生徒画面のときだけ表示 */
-.app-shell[data-view="student"] .info-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* editorを大きく */
-.view-actions [data-view-button="quick-admin"] {
-  width: clamp(58px, 4.4vw, 82px);
-}
-
 /* ========================================
    先生選択プルダウン
    ======================================== */
