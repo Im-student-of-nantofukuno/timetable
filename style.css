@@ -1203,9 +1203,22 @@ button.matrix-cell:hover {
   justify-content: center;
 }
 
-/* 浅い管理画面のアイコンを少し小さくする */
-.view-actions [data-view-button="quick-admin"] {
+/* infoを小さく */
+.info-icon-button {
+  display: none;
   width: clamp(42px, 3.2vw, 60px);
+}
+
+/* 生徒画面のときだけ表示 */
+.app-shell[data-view="student"] .info-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* editorを大きく */
+.view-actions [data-view-button="quick-admin"] {
+  width: clamp(58px, 4.4vw, 82px);
 }
 
 /* ========================================
