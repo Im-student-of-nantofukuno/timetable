@@ -206,7 +206,7 @@ textarea:focus-visible {
 
 .icon-button[data-view-button="login"],
 .icon-button[data-view-button="quick-admin"] {
-  background-image: url("アイコンeditor.png");
+  background-image: url("アイコンeditor.jpg");
 }
 
 .icon-button[data-view-button="deep-admin"] {
