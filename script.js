@@ -57,7 +57,6 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 
 // ========================================
 // 画面上部に一時的な通知を表示
-// alert() の代わりに使用
 // ========================================
 function showToast(
   message,
@@ -104,6 +103,24 @@ function showToast(
   `;
 
   document.body.appendChild(toast);
+
+  // すでに表示されているToastの下に配置する
+  const existingToasts =
+    Array.from(
+      document.querySelectorAll(".app-toast")
+    ).filter(
+      (item) => item !== toast
+    );
+
+  let topPosition = 20;
+
+  existingToasts.forEach((existingToast) => {
+    topPosition +=
+      existingToast.offsetHeight + 12;
+  });
+
+  toast.style.top =
+    `${topPosition}px`;
 
   requestAnimationFrame(() => {
     toast.style.opacity = "1";
@@ -2440,7 +2457,10 @@ async function renderStudent() {
         optionsData.courses || {}
       )[0];
 
-    if (!firstCourse) {
+    if (
+        firstCourse === undefined ||
+        firstCourse === null
+      ) {
 
       console.error(
         "利用可能なコースがありません:",
