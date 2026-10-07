@@ -1412,3 +1412,30 @@ button.matrix-cell:hover {
     min-width: 0;
   }
 }
+
+
+/* ========================================
+   生徒画面：お知らせが横にあるときの時間割ヘッダー
+   ======================================== */
+
+@media (min-width: 761px) and (max-width: 1300px) {
+  .screen--student .timetable-panel .panel-title {
+    grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .screen--student .timetable-panel .panel-title h2 {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .screen--student .timetable-panel .profile-chip--day {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .screen--student .timetable-panel .profile-chip--day select {
+    width: 100%;
+    min-width: 0;
+  }
+}
