@@ -1325,3 +1325,63 @@ button.matrix-cell:hover {
   color: #777;
   text-align: center;
 }
+
+/* ========================================
+   生徒画面の表示調整
+   ======================================== */
+
+/* ① 曜日と「時間割」が重ならないようにする */
+.screen--student .timetable-panel .panel-title {
+  grid-template-columns: minmax(150px, 28%) minmax(0, 1fr);
+}
+
+/* ② 長い授業名が上下で切れないようにする */
+.screen--student .period-list li {
+  min-height: 78px;
+  height: auto;
+  overflow: visible;
+}
+
+.screen--student .period-subject {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.15;
+}
+
+/* ③ 「お知らせ」の文字をヘッダー全体の中央にする */
+.screen--student .notice-panel .panel-title {
+  position: relative;
+}
+
+.screen--student .notice-panel .panel-title h2 {
+  grid-column: 1 / -1;
+  width: 100%;
+  text-align: center;
+}
+
+.screen--student .notice-panel .panel-title span {
+  position: absolute;
+  left: 8px;
+  z-index: 1;
+}
+
+
+/* スマホでは元のコンパクトなレイアウトを維持 */
+@media (max-width: 760px) {
+  .screen--student .timetable-panel .panel-title {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .screen--student .period-list li {
+    min-height: 64px;
+  }
+
+  .screen--student .notice-panel .panel-title {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .screen--student .notice-panel .panel-title h2 {
+    grid-column: 1 / -1;
+  }
+}
