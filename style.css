@@ -1385,3 +1385,30 @@ button.matrix-cell:hover {
     grid-column: 1 / -1;
   }
 }
+
+
+/* ========================================
+   生徒画面：760px以下の曜日ヘッダー調整
+   ======================================== */
+@media (max-width: 760px) {
+  .screen--student .timetable-panel .panel-title {
+    grid-template-columns: minmax(90px, 0.8fr) minmax(0, 1.2fr);
+    gap: 8px;
+  }
+
+  .screen--student .timetable-panel .panel-title h2 {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .screen--student .timetable-panel .profile-chip--day {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .screen--student .timetable-panel .profile-chip--day select {
+    width: 100%;
+    min-width: 0;
+  }
+}
