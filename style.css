@@ -104,14 +104,6 @@ textarea:focus-visible {
   border-radius: var(--radius-md);
 }
 
-.profile-controls:has(#student-course option[value="science"]:checked) {
-  border-color: var(--soft-blue);
-}
-
-.profile-controls:has(#student-course option[value="science"]:checked) .profile-chip--course {
-  background: var(--soft-blue-bg);
-}
-
 .profile-chip {
   display: inline-flex;
   align-items: center;
@@ -302,10 +294,10 @@ textarea:focus-visible {
 
 .period-list {
   display: grid;
-  grid-template-rows: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(78px, auto));
   gap: 10px;
-  height: 680px;
-  min-height: 0;
+  height: auto;
+  min-height: 680px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -320,9 +312,8 @@ textarea:focus-visible {
   border-radius: var(--radius-md);
   font-size: clamp(2.5rem, 3.2vw, 4rem);
   line-height: 1.05;
-  min-height: 0;
-  overflow: hidden;
-
+  min-height: 78px;
+  overflow: visible;
 }
 
 .period-number::before {
@@ -540,33 +531,116 @@ button.matrix-cell:hover {
   border: 3px solid #d00000;
 }
 
-.profile-controls[data-course="science"],
-.profile-controls[data-course="explore-science"] {
-  border-color: var(--soft-blue);
+.profile-controls,
+.timetable-panel {
+  --student-accent: var(--soft-red);
+  --student-cell: var(--field-bg);
+  --grade-chip: #ffe6e3;
+  --class-chip: var(--soft-green-bg);
+  --course-chip: var(--field-bg);
 }
 
-.profile-controls[data-course="science"] .profile-chip--course,
-.profile-controls[data-course="explore-science"] .profile-chip--course,
+.profile-controls[data-grade="1"],
+.timetable-panel[data-grade="1"] {
+  --grade-chip: #ffe9dd;
+}
+
+.profile-controls[data-grade="2"],
+.timetable-panel[data-grade="2"] {
+  --grade-chip: #fff0ce;
+}
+
+.profile-controls[data-grade="3"],
+.timetable-panel[data-grade="3"] {
+  --grade-chip: #eee5ff;
+}
+
+.profile-controls[data-grade="teacher"],
+.timetable-panel[data-grade="teacher"] {
+  --student-accent: #bfc3c7;
+  --student-cell: #edf0f2;
+  --grade-chip: #e5e8ea;
+  --class-chip: #e5e8ea;
+  --course-chip: #e5e8ea;
+}
+
+.profile-controls[data-class="1"] { --class-chip: #e7f7ce; }
+.profile-controls[data-class="2"] { --class-chip: #dff5dd; }
+.profile-controls[data-class="3"] { --class-chip: #d9f2e8; }
+.profile-controls[data-class="4"] { --class-chip: #dcf8c0; }
+.profile-controls[data-class="5"] { --class-chip: #e7f4c9; }
+.profile-controls[data-class="6"] { --class-chip: #e2f6ef; }
+.profile-controls[data-class="7"] { --class-chip: #edf4c2; }
+
+.profile-controls[data-course="humanities"],
+.profile-controls[data-course="explore-humanities"],
+.timetable-panel[data-course="humanities"],
+.timetable-panel[data-course="explore-humanities"] {
+  --student-accent: var(--soft-red);
+  --student-cell: var(--soft-red-bg);
+  --course-chip: var(--soft-red-bg);
+}
+
+.profile-controls[data-course="science"],
+.profile-controls[data-course="explore-science"],
 .timetable-panel[data-course="science"],
 .timetable-panel[data-course="explore-science"] {
-  background: var(--soft-blue);
+  --student-accent: var(--soft-blue);
+  --student-cell: var(--soft-blue-bg);
+  --course-chip: var(--soft-blue-bg);
 }
 
-.timetable-panel[data-course="science"] .period-list li,
-.timetable-panel[data-course="explore-science"] .period-list li,
-.timetable-panel[data-course="science"] .panel-title h2,
-.timetable-panel[data-course="explore-science"] .panel-title h2 {
-  background: var(--soft-blue-bg);
-}
-
-.profile-controls[data-course="agriculture"] .profile-chip--course,
+.profile-controls[data-course="agriculture"],
 .timetable-panel[data-course="agriculture"] {
-  background: #bfe88f;
+  --student-accent: #bfe88f;
+  --student-cell: var(--soft-green-bg);
+  --course-chip: var(--soft-green-bg);
 }
 
-.profile-controls[data-course="welfare"] .profile-chip--course,
+.profile-controls[data-course="welfare"],
 .timetable-panel[data-course="welfare"] {
-  background: #e8f25d;
+  --student-accent: #e8f25d;
+  --student-cell: var(--soft-yellow-bg);
+  --course-chip: var(--soft-yellow-bg);
+}
+
+.profile-controls {
+  border-color: var(--student-accent);
+}
+
+.profile-controls .profile-chip--grade {
+  background: var(--grade-chip);
+}
+
+.profile-controls .profile-chip--class {
+  background: var(--class-chip);
+}
+
+.profile-controls .profile-chip--course,
+.profile-controls #student-teacher-control {
+  background: var(--course-chip);
+}
+
+.timetable-panel {
+  background: var(--student-accent);
+}
+
+.timetable-panel .period-list li,
+.timetable-panel .panel-title h2 {
+  background: var(--student-cell);
+}
+
+.timetable-panel .period-list li.is-changed {
+  background: color-mix(in srgb, var(--student-cell) 72%, #b4c7a7);
+}
+
+.timetable-panel[data-grade="teacher"] .period-list li,
+.timetable-panel[data-grade="teacher"] .panel-title h2 {
+  background: var(--student-cell);
+}
+
+.timetable-panel[data-grade="teacher"] .period-list li.is-changed {
+  background: #d8ded8;
 }
 
 .empty-state {
@@ -1356,9 +1430,16 @@ button.matrix-cell:hover {
 }
 
 .screen--student .period-subject {
+  flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
+  word-break: auto-phrase;
+  white-space: normal;
   line-height: 1.15;
+}
+
+.screen--student .period-number {
+  flex: 0 0 auto;
 }
 
 /* お知らせタイトルを中央 */
