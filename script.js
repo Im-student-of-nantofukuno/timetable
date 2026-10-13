@@ -1,7 +1,7 @@
 const FORCE_RESET = false;
 if (FORCE_RESET) {
     localStorage.clear();
-}
+} 
 
 // ========================================
 // Google Apps Script API 
