@@ -2319,6 +2319,8 @@ async function renderTeacherTimetable() {
 
 async function renderStudent() {
 
+  applyStudentTheme();
+
   // 先生モード
 
   if (
@@ -2336,6 +2338,13 @@ async function renderStudent() {
     );
 
     updateTeacherPickerLabel();
+
+    applyStudentTheme({
+      ...state.profile,
+      grade: "teacher",
+      classNo: "teacher",
+      course: "teacher"
+    });
 
     await renderTeacherTimetable();
 
@@ -2362,23 +2371,7 @@ async function renderStudent() {
     state.profile.course
   );
 
-
-  const profileControls =
-    $("#student-profile-controls");
-
-  const timetablePanel =
-    $(".timetable-panel");
-
-
-  profileControls?.setAttribute(
-    "data-course",
-    state.profile.course
-  );
-
-  timetablePanel?.setAttribute(
-    "data-course",
-    state.profile.course
-  );
+  applyStudentTheme();
 
 
   // ========================================
@@ -2519,6 +2512,8 @@ async function renderStudent() {
 
     gasData =
       optionsData.courses[firstCourse];
+
+    applyStudentTheme();
   }
 
   console.log(
@@ -2676,6 +2671,30 @@ async function renderStudent() {
   );
 
   renderStudentNotices();
+}
+
+function applyStudentTheme(profile = state.profile) {
+  const grade =
+    profile.grade || "";
+
+  const classNo =
+    profile.classNo || "";
+
+  const course =
+    grade === "teacher"
+      ? "teacher"
+      : profile.course || "none";
+
+  [
+    $("#student-profile-controls"),
+    $(".timetable-panel")
+  ].forEach((element) => {
+    if (!element) return;
+
+    element.dataset.grade = grade;
+    element.dataset.class = classNo;
+    element.dataset.course = course;
+  });
 }
 
 function renderStudentNotices() {
