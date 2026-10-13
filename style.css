@@ -1489,3 +1489,31 @@ button.matrix-cell:hover {
     min-height: 64px;
   }
 }
+
+/* 深い管理画面の曜日欄を浅い管理画面に統一 */
+.deep-admin-header .profile-chip--day {
+  min-width: 300px;
+  min-height: 84px;
+  padding: 10px 22px;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: clamp(2rem, 2.75vw, 3.65rem);
+}
+
+/* 曜日ラベルとプルダウンの文字設定 */
+.deep-admin-header .profile-chip--day span {
+  flex: none;
+}
+
+.deep-admin-header .profile-chip--day select {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+  text-align: left;
+  appearance: none;
+}
