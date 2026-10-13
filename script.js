@@ -1,7 +1,7 @@
 const FORCE_RESET = false;
 if (FORCE_RESET) {
     localStorage.clear();
-} 
+}
 
 // ========================================
 // Google Apps Script API 
@@ -2683,7 +2683,9 @@ function applyStudentTheme(profile = state.profile) {
   const course =
     grade === "teacher"
       ? "teacher"
-      : profile.course || "none";
+      : normalizeCourseTheme(
+          profile.course || "none"
+        );
 
   [
     $("#student-profile-controls"),
@@ -3835,10 +3837,56 @@ function formatTargets(targets = {}) {
 }
 
 function getSubjectClass(course) {
-  if (course === "science" || course === "explore-science") return "subject-science";
-  if (course === "agriculture") return "subject-agriculture";
-  if (course === "welfare") return "subject-welfare";
+  const themeCourse =
+    normalizeCourseTheme(course);
+
+  if (themeCourse === "science" || themeCourse === "explore-science") return "subject-science";
+  if (themeCourse === "agriculture") return "subject-agriculture";
+  if (themeCourse === "welfare") return "subject-welfare";
   return "subject-humanities";
+}
+
+function normalizeCourseTheme(course) {
+  const value =
+    String(course || "")
+      .trim()
+      .toLowerCase();
+
+  const map = {
+    "": "none",
+    none: "none",
+    "なし": "none",
+    humanities: "humanities",
+    humanity: "humanities",
+    human: "humanities",
+    bunkei: "humanities",
+    "文": "humanities",
+    "文系": "humanities",
+    science: "science",
+    sci: "science",
+    rikei: "science",
+    "理": "science",
+    "理系": "science",
+    "explore-humanities": "explore-humanities",
+    explore_humanities: "explore-humanities",
+    tankyu_humanities: "explore-humanities",
+    "探文": "explore-humanities",
+    "explore-science": "explore-science",
+    explore_science: "explore-science",
+    tankyu_science: "explore-science",
+    "探理": "explore-science",
+    agriculture: "agriculture",
+    agri: "agriculture",
+    "農": "agriculture",
+    "農業": "agriculture",
+    welfare: "welfare",
+    "福": "welfare",
+    "福祉": "welfare",
+    teacher: "teacher",
+    "先生": "teacher"
+  };
+
+  return map[value] || value || "none";
 }
 
 function applyClassCourseOverrides(classes) {
