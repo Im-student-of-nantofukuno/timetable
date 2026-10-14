@@ -841,9 +841,46 @@ function bindEvents() {
 
   $(".post-form")?.addEventListener("submit", handlePostSubmit);
   $("#google-login-button")?.addEventListener("click", handleGoogleLogin);
+  
   $$(".post-form input[type='checkbox']").forEach((input) => {
-    input.addEventListener("change", updateTargetSummary);
+    input.addEventListener("change", (event) => {
+      const changed = event.currentTarget;
+  
+      // 文理の対象設定だけ、全と個別の選択を排他的にする
+      if (changed.name === "target-course") {
+        const form = changed.form;
+        const allCheckbox = $("input[name='target-course'][value='all']", form);
+        const courseCheckboxes = $$(
+          "input[name='target-course']",
+          form
+        );
+  
+        if (changed.value === "all" && changed.checked) {
+          // 「全」を選んだら、個別のコースを解除
+          courseCheckboxes.forEach((checkbox) => {
+            if (checkbox.value !== "all") {
+              checkbox.checked = false;
+            }
+          });
+        } else if (changed.value !== "all" && changed.checked) {
+          // 個別のコースを選んだら、「全」を解除
+          allCheckbox.checked = false;
+        }
+  
+        // すべての選択を解除した場合は「全」に戻す
+        const hasSelection = courseCheckboxes.some(
+          (checkbox) => checkbox.checked
+        );
+  
+        if (!hasSelection) {
+          allCheckbox.checked = true;
+        }
+      }
+  
+      updateTargetSummary();
+    });
   });
+
   $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
   
   // ========================================
@@ -3848,7 +3885,10 @@ function getCheckedValues(form, name) {
 function formatTargets(targets = {}) {
   return `[${(targets.grades || ["all"]).join(",")}]年`
     + `[${(targets.classes || ["all"]).join(",")}]組 `
-    + `文理:[${(targets.courses || ["all"]).map((course) => state.data.courses[course] || "全").join(",")}]`;
+    + `文理:[${(targets.courses || ["all"]).map((course) => {
+      if (course === "all") return "全";
+      return state.data.courses[course] || course;
+    }).join(",")}]`;
 }
 
 function getSubjectClass(course) {
