@@ -2353,9 +2353,61 @@ async function renderTeacherTimetable() {
   );
 }
 
+function updateStudentDayChipColor() {
+  const daySelect = document.getElementById("student-day");
+  if (!daySelect) return;
+
+  const selectedDay = daySelect.value || "月";
+
+  const dayNumber = {
+    "月": 1,
+    "火": 2,
+    "水": 3,
+    "木": 4,
+    "金": 5
+  };
+
+  const todayNumber = new Date().getDay();
+  const selectedNumber = dayNumber[selectedDay];
+
+  if (selectedNumber === undefined) return;
+
+  let daysAhead =
+    (selectedNumber - todayNumber + 7) % 7;
+
+  // 土日は月曜日を次の登校日として扱う
+  if (todayNumber === 6) {
+    daysAhead = selectedNumber === 1 ? 2 : daysAhead;
+  }
+
+  if (todayNumber === 0) {
+    daysAhead = selectedNumber === 1 ? 1 : daysAhead;
+  }
+
+  const dayChip = daySelect.closest(".profile-chip--day");
+  if (!dayChip) return;
+
+  dayChip.classList.remove(
+    "day-is-today",
+    "day-is-tomorrow",
+    "day-is-future"
+  );
+
+  if (daysAhead === 0) {
+    dayChip.classList.add("day-is-today");
+  } else if (daysAhead === 1) {
+    dayChip.classList.add("day-is-tomorrow");
+  } else {
+    dayChip.classList.add("day-is-future");
+  }
+}
+
 async function renderStudent() {
 
   applyStudentTheme();
+
+  // 曜日に応じて背景色を更新（先生・生徒共通）
+  updateStudentDayChipColor();
 
   // 先生モード
 
@@ -2562,53 +2614,7 @@ async function renderStudent() {
     gasData
   );
   
-  // 今日の曜日を取得 2日以上先なら警告
- 
-  const selectedDay =
-    document.getElementById("student-day")?.value || "月";
-  const daySelect = document.getElementById("student-day");
-
-  if (daySelect) {
-    const dayNumber = {
-      "月": 1,
-      "火": 2,
-      "水": 3,
-      "木": 4,
-      "金": 5
-    };
-
-    const todayNumber = new Date().getDay();
-    const selectedNumber = dayNumber[selectedDay];
-
-    let daysAhead =
-      (selectedNumber - todayNumber + 7) % 7;
-
-   // 土日は月曜日を次の登校日として扱う
-    if (todayNumber === 6) {
-      daysAhead = selectedNumber === 1 ? 2 : daysAhead;
-    }
-
-    if (todayNumber === 0) {
-      daysAhead = selectedNumber === 1 ? 1 : daysAhead;
-    }
-
-    const dayChip = daySelect.closest(".profile-chip--day");
-
-    if (dayChip) {
-      dayChip.classList.remove(
-        "day-is-today",
-        "day-is-tomorrow",
-        "day-is-future"
-      );
-
-      if (daysAhead === 0) {
-        dayChip.classList.add("day-is-today");
-      } else if (daysAhead === 1) {
-        dayChip.classList.add("day-is-tomorrow");
-      } else {
-        dayChip.classList.add("day-is-future");
-      }
-    }
+  updateStudentDayChipColor();
 
   }
 
