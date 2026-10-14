@@ -868,8 +868,7 @@ function bindEvents() {
           );
 
         if (confirmed) {
-          window.location.href =
-            "https://docs.google.com/document/d/1fU3y60iBCRSSywc3J4EdUebXePZ1NAMRqKeDYOOgRA8/edit?usp=sharing";
+          window.open("https://docs.google.com/document/d/1ROLjYdAlIvV3b8w8YJR8LD_0AzD-XJqQ86815m-LmQo/edit?tab=t.mm7btv9ejgq1","_blank");
         }
       }
     );
