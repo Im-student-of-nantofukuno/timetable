@@ -3881,6 +3881,11 @@ function getClassesByGrade(grade) {
 }
 
 function matchesTargets(targets = {}, profile) {
+  // 先生は学年・クラス・コースに関係なく対象にする
+  if (String(profile.grade) === "teacher") {
+    return true;
+  }
+
   const targetCourses = (targets.courses || ["all"]).map(
     (course) => normalizeCourseTheme(course)
   );
