@@ -3881,9 +3881,15 @@ function getClassesByGrade(grade) {
 }
 
 function matchesTargets(targets = {}, profile) {
+  const targetCourses = (targets.courses || ["all"]).map(
+    (course) => normalizeCourseTheme(course)
+  );
+
+  const profileCourse = normalizeCourseTheme(profile.course);
+
   return targetMatches(targets.grades, profile.grade)
     && targetMatches(targets.classes, profile.classNo)
-    && targetMatches(targets.courses, profile.course);
+    && targetMatches(targetCourses, profileCourse);
 }
 
 function targetMatches(values = ["all"], currentValue) {
