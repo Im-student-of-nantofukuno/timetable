@@ -2703,9 +2703,22 @@ function renderStudentNotices() {
   if (!container) return;
 
   const notices = state.data.notifications.filter((notice) => {
-  return notice.kind === "notice"
-    && isNotificationActive(notice)
-    && matchesTargets(notice.targets, state.profile);
+    const active = isNotificationActive(notice);
+    const targetMatch = matchesTargets(notice.targets, state.profile);
+    const kindMatch = notice.kind === "notice";
+  
+    console.log("お知らせ表示判定:", {
+      title: notice.title,
+      kind: notice.kind,
+      targets: notice.targets,
+      profile: state.profile,
+      active,
+      targetMatch,
+      kindMatch,
+      willDisplay: active && targetMatch && kindMatch
+    });
+  
+    return kindMatch && active && targetMatch;
   });
 
   container.replaceChildren();
