@@ -3659,6 +3659,16 @@ async function handlePostSubmit(event) {
   // 日付をSupabase保存用の日時に変換
   const displayStart = `${startDate}T00:00:00+09:00`;
   const displayEnd = `${endDate}T23:59:59+09:00`;
+  
+  const courseNameMap = {
+    all: "all",
+    none: "なし",
+    humanities: "文系",
+    science: "理系",
+    "explore-humanities": "探文",
+    "explore-science": "探理"
+  };
+  
   const notification = {
     id: `post-${Date.now()}`,
     kind: state.adminMode,
@@ -3669,9 +3679,12 @@ async function handlePostSubmit(event) {
     targets: {
       grades: getCheckedValues(form, "target-grade"),
       classes: getCheckedValues(form, "target-class"),
-      courses: getCheckedValues(form, "target-course")
+      courses: getCheckedValues(form, "target-course").map(
+        (course) => courseNameMap[course] || course
+      )
     }
   };
+
   // Supabaseへ保存
   const { data, error } = await window.supabaseClient
     .from("notifications")
