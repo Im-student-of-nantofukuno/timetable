@@ -2710,8 +2710,11 @@ function renderStudentNotices() {
     console.log("お知らせ表示判定:", {
       title: notice.title,
       kind: notice.kind,
-      targets: notice.targets,
-      profile: state.profile,
+      targets: JSON.stringify(notice.targets),
+      profile: JSON.stringify(state.profile),
+      gradeMatch: targetMatches(notice.targets?.grades, state.profile.grade),
+      classMatch: targetMatches(notice.targets?.classes, state.profile.classNo),
+      courseMatch: targetMatches(notice.targets?.courses, state.profile.course),
       active,
       targetMatch,
       kindMatch,
