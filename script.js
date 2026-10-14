@@ -2616,8 +2616,6 @@ async function renderStudent() {
   
   updateStudentDayChipColor();
 
-  }
-
     // 読み込み完了後に時間割を表示
   if (periodList) {
     periodList.hidden = false;
