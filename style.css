@@ -651,25 +651,19 @@ button.matrix-cell:hover {
   font-size: 1.2rem;
 }
 
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 2),
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 5),
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 6),
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 8) {
+.timetable-matrix .matrix-cell.subject-humanities {
   background: var(--soft-red-bg);
 }
 
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 3),
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 4),
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 7),
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 9) {
+.timetable-matrix .matrix-cell.subject-science {
   background: var(--soft-blue-bg);
 }
 
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 10) {
+.timetable-matrix .matrix-cell.subject-agriculture {
   background: var(--soft-green-bg);
 }
 
-.timetable-matrix--base .matrix-cell:not(.matrix-cell--corner):not(.matrix-cell--period):nth-child(11n + 11) {
+.timetable-matrix .matrix-cell.subject-welfare {
   background: var(--soft-yellow-bg);
 }
 
