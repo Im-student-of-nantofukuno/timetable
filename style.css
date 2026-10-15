@@ -673,22 +673,6 @@ button.matrix-cell:hover {
   background: var(--soft-yellow-bg);
 }
 
-.timetable-matrix .matrix-cell.subject-humanities {
-  background: var(--soft-red-bg);
-}
-
-.timetable-matrix .matrix-cell.subject-science {
-  background: var(--soft-blue-bg);
-}
-
-.timetable-matrix .matrix-cell.subject-agriculture {
-  background: var(--soft-green-bg);
-}
-
-.timetable-matrix .matrix-cell.subject-welfare {
-  background: var(--soft-yellow-bg);
-}
-
 .timetable-matrix .matrix-cell.is-changed {
   background: var(--changed);
 }
