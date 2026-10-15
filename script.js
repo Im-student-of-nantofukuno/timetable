@@ -188,11 +188,11 @@ async function setupAuth() {
     state.adminProfile = null;
 
     if (!session) {
-      console.log("未認証");
+      console.log("メール未認証");
       return false;
     }
 
-    console.log("認証済み:", session.user.email);
+    console.log("メール認証済み",);
 
     const { data, error } = await window.supabaseClient
       .from("admin_profiles")
