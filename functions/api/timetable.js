@@ -3,20 +3,18 @@ export async function onRequestGet(context) {
     const env = context.env;
     const request = context.request;
     const requestUrl = new URL(context.request.url);
-    console.log("受信したGET URL:", requestUrl.toString());
     
     // ブラウザから送られたGETパラメータを取得 
     const params = requestUrl.searchParams;
 
     const teacherId = params.get("teacher_id");
-
+    const admin = params.get("admin");
+    
+    // 教員の時間割：登録済みユーザーのみ
     if (teacherId) {
       const authResult =
-        await authenticateRegisteredUser(
-          request,
-          env
-        );
-
+        await authenticateRegisteredUser(request, env);
+    
       if (!authResult.success) {
         return jsonResponse(
           {
@@ -28,14 +26,67 @@ export async function onRequestGet(context) {
       }
     }
     
+    // 浅い管理画面：quick / deep のみ
+    if (admin === "quick") {
+      const authResult =
+        await authenticateRegisteredUser(request, env);
+    
+      if (!authResult.success) {
+        return jsonResponse(
+          {
+            success: false,
+            error: authResult.error
+          },
+          authResult.status
+        );
+      }
+    
+      if (
+        authResult.role !== "quick" &&
+        authResult.role !== "deep"
+      ) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "この情報を取得する権限がありません"
+          },
+          403
+        );
+      }
+    }
+    
+    // 重複情報：deep のみ
+    if (admin === "conflicts") {
+      const authResult =
+        await authenticateRegisteredUser(request, env);
+    
+      if (!authResult.success) {
+        return jsonResponse(
+          {
+            success: false,
+            error: authResult.error
+          },
+          authResult.status
+        );
+      }
+    
+      if (authResult.role !== "deep") {
+        return jsonResponse(
+          {
+            success: false,
+            error: "この情報を取得する権限がありません"
+          },
+          403
+        );
+      }
+    }
+    
     // GASへそのまま転送するURLを作る
     const gasUrl = new URL(env.GAS_API_URL);
 
     for (const [key, value] of params.entries()) {
       gasUrl.searchParams.set(key, value);
     }
-
-    console.log("GAS GET request:", gasUrl.toString());
 
     // Cloudflare側からGASへアクセス
     const gasResponse = await fetch(gasUrl.toString());
@@ -46,14 +97,7 @@ export async function onRequestGet(context) {
       "GAS GET content-type:",
       gasResponse.headers.get("content-type")
     );
-    console.log("GAS GET final URL:", gasResponse.url);
     console.log("GAS GET redirected:", gasResponse.redirected);
-
-    // GASから実際に返ってきた本文を確認
-    console.log(
-      "GAS GET response body:",
-      gasText.slice(0, 1000)
-    );
 
     let gasData;
 
