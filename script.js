@@ -2172,7 +2172,7 @@ async function fetchTeacherDayTimetable(teacherId, day) {
         "先生時間割取得失敗:",
         data
       );
-      howToast(
+      showToast(
         "先生の時間割の取得に失敗しました。",
         5000,
         "error"
