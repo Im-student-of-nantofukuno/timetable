@@ -130,11 +130,6 @@ export async function onRequestGet(context) {
         gasResponse.redirected
       );
 
-      console.error(
-        "GAS GET response body:",
-        gasText.slice(0, 1000)
-      );
-
       return jsonResponse(
         {
           success: false,
