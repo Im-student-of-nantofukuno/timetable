@@ -4470,8 +4470,30 @@ async function fetchGasAdminTimetable(grade) {
             url
           );
 
-          const response =
-            await fetch(url);
+          
+          const {
+            data: { session },
+            error: sessionError
+          } = await window.supabaseClient.auth.getSession();
+          
+          if (sessionError) {
+            throw new Error(
+              "ログイン情報の取得に失敗しました"
+            );
+          }
+          
+          if (!session?.access_token) {
+            throw new Error(
+              "ログインしていません。再ログインしてください"
+            );
+          }
+          
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
 
 
           // ========================================
@@ -4640,11 +4662,33 @@ async function fetchGasAdminTimetable(grade) {
 async function fetchInitialAdminConflicts() {
 
   try {
-
-    const response =
-      await fetch(
-        "/api/timetable?admin=conflicts"
+        
+    const {
+      data: { session },
+      error: sessionError
+    } = await window.supabaseClient.auth.getSession();
+    
+    if (sessionError) {
+      throw new Error(
+        "ログイン情報の取得に失敗しました"
       );
+    }
+    
+    if (!session?.access_token) {
+      throw new Error(
+        "ログインしていません。再ログインしてください"
+      );
+    }
+    
+    const response = await fetch(
+      "/api/timetable?admin=conflicts",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      }
+    );
 
     if (!response.ok) {
 
