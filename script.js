@@ -259,7 +259,7 @@ async function setupAuth() {
     if (event === "SIGNED_IN") {
       console.log(
         isAdmin
-          ? "管理者としてログインしました"
+          ? "先生としてログインしました"
           : "一般ユーザーとしてログインしました"
       );
     }
