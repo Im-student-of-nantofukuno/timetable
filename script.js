@@ -2753,21 +2753,7 @@ function renderStudentNotices() {
     const active = isNotificationActive(notice);
     const targetMatch = matchesTargets(notice.targets, state.profile);
     const kindMatch = notice.kind === "notice";
-  
-    console.log("お知らせ表示判定:", {
-      title: notice.title,
-      kind: notice.kind,
-      targets: JSON.stringify(notice.targets),
-      profile: JSON.stringify(state.profile),
-      gradeMatch: targetMatches(notice.targets?.grades, state.profile.grade),
-      classMatch: targetMatches(notice.targets?.classes, state.profile.classNo),
-      courseMatch: targetMatches(notice.targets?.courses, state.profile.course),
-      active,
-      targetMatch,
-      kindMatch,
-      willDisplay: active && targetMatch && kindMatch
-    });
-  
+    
     return kindMatch && active && targetMatch;
   });
 
