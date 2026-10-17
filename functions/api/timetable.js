@@ -55,7 +55,7 @@ export async function onRequestGet(context) {
       }
     }
     
-    // 重複情報：deep のみ
+    // 重複情報：quick / deep のみ
     if (admin === "conflicts") {
       const authResult =
         await authenticateRegisteredUser(request, env);
@@ -70,7 +70,10 @@ export async function onRequestGet(context) {
         );
       }
     
-      if (authResult.role !== "deep") {
+      if (
+        authResult.role !== "quick" &&
+        authResult.role !== "deep"
+      ) {
         return jsonResponse(
           {
             success: false,
