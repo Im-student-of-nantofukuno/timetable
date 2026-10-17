@@ -3634,6 +3634,39 @@ async function editBaseSubject(classItem, period, currentSubject) {
   }
 }
 
+
+async function requestNotificationApi(action, payload = {}) {
+  const {
+    data: { session },
+    error
+  } = await window.supabaseClient.auth.getSession();
+
+  if (error || !session?.access_token) {
+    throw new Error(
+      "ログイン状態を確認できません。再ログインしてください。"
+    );
+  }
+
+  const response = await fetch("/api/notifications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({ action, ...payload })
+  });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || result.success === false) {
+    throw new Error(
+      result.error || "お知らせAPIの処理に失敗しました。"
+    );
+  }
+
+  return result;
+}
+
 async function handlePostSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -3681,23 +3714,27 @@ async function handlePostSubmit(event) {
     }
   };
 
-  // Supabaseへ保存
-  const { data, error } = await window.supabaseClient
-    .from("notifications")
-    .insert([notification])
-    .select();
-  if (error) {
+  // 認証済み管理者用API経由で保存
+  try {
+    const result = await requestNotificationApi(
+      "insert",
+      { notification }
+    );
+
+    state.data.notifications.unshift(result.data);
+    console.log("お知らせ投稿成功:", result.data);
+  } catch (error) {
     console.error("お知らせ投稿失敗:", error);
+
     showToast(
-      "お知らせの投稿に失敗しました。",
+      "お知らせの投稿に失敗しました。\n" + error.message,
       5000,
       "error"
     );
+
     return;
   }
-  console.log("お知らせ投稿成功:", data);
-  // Supabaseに保存されたデータを画面側にも反映
-  state.data.notifications.unshift(data[0]);
+
   // フォームを初期化
   form.reset();
   // 対象設定を初期状態に戻す
@@ -3749,21 +3786,9 @@ async function deleteNotification(id) {
     // Supabaseから削除
     // ========================================
     const { error } = await window.supabaseClient
-      .from("notifications")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error(
-        "お知らせ削除失敗:",
-        error
-      );
-
-      throw new Error(
-        error.message ||
-        "お知らせの削除に失敗しました。"
-      );
-    }
+    
+    // 認証済み管理者用API経由で削除
+    await requestNotificationApi("delete", { id });
 
     // ========================================
     // ブラウザ側のstateも更新
@@ -4047,42 +4072,29 @@ async function addChangeHistory(
     }
   };
 
-  const {
-    data,
-    error
-  } = await window.supabaseClient
-    .from("notifications")
-    .insert([history])
-    .select();
+  let result;
 
-  if (error) {
-    console.error(
-      "変更履歴の保存に失敗:",
-      error
+  try {
+    result = await requestNotificationApi(
+      "insert",
+      { notification: history }
     );
+  } catch (error) {
+    console.error("変更履歴の保存に失敗:", error);
 
-    
     showToast(
       "変更履歴の保存に失敗しました。",
       5000,
       "error"
-    );  
-
-    throw new Error(
-      error.message ||
-      "変更履歴の保存に失敗しました。"
     );
+
+    throw error;
   }
 
-  console.log(
-    "変更履歴の保存成功:",
-    data
-  );
+  console.log("変更履歴の保存成功:", result.data);
 
-  if (data?.[0]) {
-    state.data.notifications.unshift(
-      data[0]
-    );
+  if (result.data) {
+    state.data.notifications.unshift(result.data);
   }
 
   renderAdminPosts();
