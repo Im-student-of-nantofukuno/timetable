@@ -109,8 +109,27 @@ export async function onRequestGet(context) {
       })
     });
 
+    // 通信経路の調査用ログ。秘密情報やクエリ文字列は記録しない
+    if (gasResponse.redirected || !gasResponse.ok) {
+      let finalUrl = null;
+    
+      try {
+        const parsedUrl = new URL(gasResponse.url);
+        finalUrl = `${parsedUrl.origin}${parsedUrl.pathname}`;
+      } catch {
+        finalUrl = "URLを取得できません";
+      }
+    
+      console.warn("GAS通信経路の診断:", {
+        status: gasResponse.status,
+        redirected: gasResponse.redirected,
+        finalUrl,
+        contentType: gasResponse.headers.get("content-type")
+      });
+    }
+    
     const gasText = await gasResponse.text();
-
+      
     let gasData;
 
     try {
