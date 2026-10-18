@@ -84,69 +84,67 @@ export async function onRequestGet(context) {
       }
     }
     
-    // GASへそのまま転送するURLを作る
-    const gasUrl = new URL(env.GAS_API_URL);
+    // GASへの読み取りリクエストは、認証付きPOSTで送信する
+    const gasReadSecret = env.GAS_READ_SECRET;
 
-    for (const [key, value] of params.entries()) {
-      gasUrl.searchParams.set(key, value);
+    if (!gasReadSecret) {
+      console.error("GAS_READ_SECRETが設定されていません");
+      return jsonResponse(
+        { success: false, error: "サーバー設定エラー" },
+        500
+      );
     }
 
-    // Cloudflare側からGASへアクセス
-    const gasResponse = await fetch(gasUrl.toString());
-    const gasText = await gasResponse.text();
+    const gasResponse = await fetch(env.GAS_API_URL, {
+      method: "POST",
+      redirect: "follow",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "readTimetable",
+        params: Object.fromEntries(params.entries()),
+        secret: gasReadSecret
+      })
+    });
 
-    console.log("GAS GET status:", gasResponse.status);
-    console.log(
-      "GAS GET content-type:",
-      gasResponse.headers.get("content-type")
-    );
-    console.log("GAS GET redirected:", gasResponse.redirected);
+    const gasText = await gasResponse.text();
 
     let gasData;
 
     try {
       gasData = JSON.parse(gasText);
     } catch (error) {
-
-      console.error(
-        "GAS GET response parse error:",
-        error.message
-      );
-
-      console.error(
-        "GAS GET status:",
-        gasResponse.status
-      );
-
-      console.error(
-        "GAS GET content-type:",
-        gasResponse.headers.get("content-type")
-      );
-
-      console.error(
-        "GAS GET final URL:",
-        gasResponse.url
-      );
-
-      console.error(
-        "GAS GET redirected:",
-        gasResponse.redirected
-      );
+      console.error("GAS読み取り応答のJSON解析に失敗しました", {
+        status: gasResponse.status,
+        contentType: gasResponse.headers.get("content-type"),
+        redirected: gasResponse.redirected
+      });
 
       return jsonResponse(
         {
           success: false,
-          error:
-            "GASからJSONではない応答が返されました"
+          error: "時間割データを取得できませんでした"
         },
         502
       );
     }
 
-    return jsonResponse(
-      gasData,
-      gasResponse.ok ? 200 : gasResponse.status
-    );
+    if (!gasResponse.ok) {
+      console.error("GAS読み取りリクエスト失敗:", gasResponse.status);
+
+      return jsonResponse(
+        {
+          success: false,
+          error: "時間割データを取得できませんでした"
+        },
+        502
+      );
+    }
+
+    return jsonResponse(gasData, 200);
+
 
   } catch (error) {
     console.error("timetable GET error:", error);
