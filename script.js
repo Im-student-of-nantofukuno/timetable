@@ -48,6 +48,8 @@ const state = {
     changes: [],
     notifications: [],
     gasClassOptionsCache: {},
+    gasClassMetadata: null,
+    gasClassMetadataPromise: null,
     gasAdminTimetableCache: {},
     gasAdminConflictPairs: {},
     gasAdminTimetableConflicts: {},
@@ -2240,10 +2242,10 @@ async function renderTeacherTimetable() {
     return;
   }
   
-  // class_id → 年組を調べるためのデータを用意
-  if (!state.data.gasAllAdminTimetables) {
-    state.data.gasAllAdminTimetables =
-      await fetchAllAdminTimetables();
+  // class_id → 年組を調べるためのクラス情報を用意
+  if (!state.data.gasClassMetadata) {
+    state.data.gasClassMetadata =
+      await fetchClassMetadata();
   }
   
   const data =
@@ -2326,7 +2328,7 @@ async function renderTeacherTimetable() {
             const hLabel =
               getHLabelFromClassId(
                 item.class_id,
-                state.data.gasAllAdminTimetables
+                state.data.gasClassMetadata
               );
       
             if (hLabel) {
@@ -4328,6 +4330,128 @@ function updateStudentCourseOptions(
       courseEntries[0][0];
 
   }
+}
+
+// ========================================
+// 先生の時間割表示用：クラス情報のみ取得
+// 管理者用の時間割データは取得しない
+// ========================================
+async function fetchClassMetadata() {
+  // 取得済みならキャッシュを返す
+  if (state.data.gasClassMetadata) {
+    return state.data.gasClassMetadata;
+  }
+
+  // 同じ取得処理が進行中なら、その通信を共有する
+  if (state.data.gasClassMetadataPromise) {
+    return await state.data.gasClassMetadataPromise;
+  }
+
+  state.data.gasClassMetadataPromise =
+    (async () => {
+      try {
+        const {
+          data: { session },
+          error: sessionError
+        } = await window.supabaseClient.auth.getSession();
+
+        if (sessionError) {
+          throw new Error(
+            "ログイン情報の取得に失敗しました"
+          );
+        }
+
+        if (!session?.access_token) {
+          throw new Error(
+            "ログインしていません。再ログインしてください"
+          );
+        }
+
+        const params = new URLSearchParams({
+          admin: "classMetadata"
+        });
+
+        const response = await fetch(
+          `/api/timetable?${params.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization:
+                `Bearer ${session.access_token}`
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `クラス情報の取得に失敗しました: ${response.status}`
+          );
+        }
+
+        const result = await response.json();
+
+        if (
+          !result.success ||
+          !Array.isArray(result.data)
+        ) {
+          throw new Error(
+            result.error ||
+            "クラス情報の形式が正しくありません"
+          );
+        }
+
+        // 既存の表示用関数が使える形式に整理する
+        const grouped = {
+          "1": { classes: [] },
+          "2": { classes: [] },
+          "3": { classes: [] }
+        };
+
+        result.data.forEach((item) => {
+          const grade =
+            String(item.grade || "").trim();
+
+          if (grouped[grade]) {
+            grouped[grade].classes.push({
+              class_id:
+                String(item.class_id || "").trim(),
+              grade,
+              class_no:
+                String(item.class_no || "").trim(),
+              course:
+                String(item.course || "").trim()
+            });
+          }
+        });
+
+        state.data.gasClassMetadata = grouped;
+
+        console.log(
+          "先生時間割用クラス情報の取得成功"
+        );
+
+        return grouped;
+
+      } catch (error) {
+        console.error(
+          "先生時間割用クラス情報の取得失敗:",
+          error
+        );
+
+        showToast(
+          "クラス情報の取得に失敗しました。ページを再読み込みしてください。",
+          5000,
+          "error"
+        );
+
+        return null;
+
+      } finally {
+        state.data.gasClassMetadataPromise = null;
+      }
+    })();
+
+  return await state.data.gasClassMetadataPromise;
 }
 
 // ========================================
