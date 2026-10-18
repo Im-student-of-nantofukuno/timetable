@@ -147,12 +147,12 @@ export async function onRequestGet(context) {
 
 
   } catch (error) {
-    console.error("timetable GET error:", error);
-
+    console.error("timetable GET failed");
+  
     return jsonResponse(
       {
         success: false,
-        error: error.message
+        error: "サーバー内部でエラーが発生しました"
       },
       500
     );
