@@ -180,18 +180,14 @@ if (deepActions.includes(action)) {
     try {
       gasData = JSON.parse(gasText);
     } catch (error) {
-
+      console.error("GAS response JSON parsing failed");
+    
       return jsonResponse(
         {
           success: false,
-          error:
-            "GASからJSONではない応答が返されました。\n" +
-            "HTTP: " +
-            gasResponse.status +
-            "\nContent-Type: " +
-            gasResponse.headers.get("content-type")
+          error: "時間割変更の処理に失敗しました"
         },
-        500
+        502
       );
     }
 
@@ -199,14 +195,14 @@ if (deepActions.includes(action)) {
       gasData,
       gasResponse.ok ? 200 : 500
     );
-
+  
   } catch (error) {
-    console.error("timetable-change error:", error);
-
+    console.error("timetable-change request failed");
+  
     return jsonResponse(
       {
         success: false,
-        error: error.message
+        error: "サーバー内部でエラーが発生しました"
       },
       500
     );
