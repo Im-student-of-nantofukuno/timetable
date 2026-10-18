@@ -150,8 +150,7 @@ export async function onRequestPost(context) {
       if (!insertResponse.ok) {
         console.error(
           "notifications insert failed:",
-          insertResponse.status,
-          resultText
+          insertResponse.status
         );
 
         return jsonResponse(
@@ -195,8 +194,7 @@ export async function onRequestPost(context) {
 
         console.error(
           "notifications delete failed:",
-          deleteResponse.status,
-          errorText
+          deleteResponse.status
         );
 
         return jsonResponse(
@@ -213,10 +211,13 @@ export async function onRequestPost(context) {
       400
     );
   } catch (error) {
-    console.error("notifications API error:", error);
-
+    console.error("notifications API failed");
+  
     return jsonResponse(
-      { success: false, error: "サーバー側で処理に失敗しました。" },
+      {
+        success: false,
+        error: "サーバー内部でエラーが発生しました。"
+      },
       500
     );
   }
