@@ -25,6 +25,22 @@ export async function onRequestGet(context) {
         );
       }
     }
+
+    // クラス情報のみ：ログイン済みの登録ユーザー
+    if (admin === "classMetadata") {
+      const authResult =
+        await authenticateRegisteredUser(request, env);
+
+      if (!authResult.success) {
+        return jsonResponse(
+          {
+            success: false,
+            error: authResult.error
+          },
+          authResult.status
+        );
+      }
+    }
     
     // 浅い管理画面：quick / deep のみ
     if (admin === "quick") {
