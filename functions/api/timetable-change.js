@@ -173,10 +173,6 @@ if (deepActions.includes(action)) {
       }
     );
 
-    console.log("GAS response status:", gasResponse.status);
-    console.log("GAS response URL:", gasResponse.url);
-    console.log("GAS response redirected:", gasResponse.redirected);
-
     const gasText = await gasResponse.text();
 
     let gasData;
@@ -184,13 +180,6 @@ if (deepActions.includes(action)) {
     try {
       gasData = JSON.parse(gasText);
     } catch (error) {
-      console.error("GAS response status:", gasResponse.status);
-      console.error("GAS response URL:", gasResponse.url);
-      console.error(
-        "GAS response content-type:",
-        gasResponse.headers.get("content-type")
-      );
-      console.error("GAS response text:", gasText);
 
       return jsonResponse(
         {
