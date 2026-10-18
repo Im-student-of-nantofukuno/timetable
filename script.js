@@ -12,8 +12,7 @@ const STORAGE_KEYS = {
   profile: "timetable.profile",
   baseTimetables: "timetable.baseTimetables",
   classCourses: "timetable.classCourses",
-  changes: "timetable.changes",
-  managers: "timetable.managers"
+  changes: "timetable.changes"
 };
 // ========================================
 // 昔local環境で作ってた時の名残 今は空
@@ -26,9 +25,6 @@ window.TIMETABLE_DATA = {
   classes: [],
   baseTimetables: {}
 };
-
-window.MANAGERS = [];
-
 
 const state = {
   view: "student",
@@ -51,7 +47,6 @@ const state = {
     classCourses: {},
     changes: [],
     notifications: [],
-    managers: [],
     gasClassOptionsCache: {},
     gasAdminTimetableCache: {},
     gasAdminConflictPairs: {},
@@ -304,9 +299,6 @@ async function loadInitialData() {
     console.log("notifications取得成功:", data);
     state.data.notifications = data || [];
   }
-  state.data.managers = normalizeManagers(
-    readStored(STORAGE_KEYS.managers, window.MANAGERS || [])
-  );
 }
 
 function isNotificationActive(notification) {
@@ -880,9 +872,7 @@ function bindEvents() {
       updateTargetSummary();
     });
   });
-
-  $(".manager-form")?.addEventListener("submit", handleManagerSubmit);
-  
+ 
   // ========================================
   // 管理者追加
   // ========================================
@@ -3127,25 +3117,6 @@ async function renderDeepAdmin() {
       matrix.append(cell);
     });
   });
-
-  renderManagers();
-}
-
-function renderManagers() {
-  const list = $(".manager-list");
-  if (!list) return;
-  list.replaceChildren();
-
-  state.data.managers.forEach((manager) => {
-    const item = document.createElement("li");
-    item.innerHTML = `
-      <button type="button" aria-label="削除">×</button>
-      <span>${escapeHtml(manager.id)}</span>
-    `;
-    item.title = manager.email;
-    $("button", item).addEventListener("click", () => deleteManager(manager.id));
-    list.append(item);
-  });
 }
 
 function appendMatrixHeader(matrix, classes) {
@@ -3746,27 +3717,6 @@ async function handlePostSubmit(event) {
   renderStudentNotices();
 }
 
-function handleManagerSubmit(event) {
-  event.preventDefault();
-  const input = event.currentTarget.elements["new-manager-email"];
-  const email = input.value.trim();
-
-  if (!email) return;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showToast("メールアドレスの形式を確認してください。");
-    return;
-  }
-  if (state.data.managers.some((manager) => manager.email === email)) {
-    showToast("同じメールアドレスがすでに登録されています。");
-    return;
-  }
-
-  state.data.managers.push({ id: createManagerId(), email });
-  saveStored(STORAGE_KEYS.managers, state.data.managers);
-  input.value = "";
-  renderManagers();
-}
-
 async function deleteNotification(id) {
   if (!id) {
     showToast("削除するお知らせが指定されていません。");
@@ -3820,12 +3770,6 @@ async function deleteNotification(id) {
       error.message
     );
   }
-}
-
-function deleteManager(id) {
-  state.data.managers = state.data.managers.filter((manager) => manager.id !== id);
-  saveStored(STORAGE_KEYS.managers, state.data.managers);
-  renderManagers();
 }
 
 function ensureValidStudentProfile() {
@@ -3994,19 +3938,6 @@ function applyClassCourseOverrides(classes) {
     ...classItem,
     course: state.data.classCourses[classItem.id] || classItem.course
   }));
-}
-
-function normalizeManagers(managers) {
-  return managers.map((manager) => {
-    if (typeof manager === "string") {
-      return { id: createManagerId(), email: manager };
-    }
-    return manager;
-  });
-}
-
-function createManagerId() {
-  return `mgr-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 async function addChangeHistory(
