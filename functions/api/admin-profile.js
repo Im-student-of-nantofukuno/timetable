@@ -785,19 +785,8 @@ export async function onRequestDelete(context) {
         }
       );
 
-    const deleteAuthText =
-      await deleteAuthResponse.text();
-
-    let deleteAuthData;
-
-    try {
-      deleteAuthData =
-        JSON.parse(deleteAuthText);
-    } catch {
-      deleteAuthData =
-        deleteAuthText;
-    }
-
+    await deleteAuthResponse.text();
+    
     if (!deleteAuthResponse.ok) {
       console.error(
         "Authentication user delete failed:",
