@@ -231,9 +231,8 @@ export async function onRequestPost(context) {
 
     if (!insertResponse.ok) {
       console.error(
-        "admin_profiles insert error:",
-        insertResponse.status,
-        insertData
+        "admin_profiles insert failed:",
+        insertResponse.status
       );
 
       return jsonResponse(
@@ -257,16 +256,12 @@ export async function onRequestPost(context) {
     });
 
   } catch (error) {
-
-    console.error(
-      "admin-profile error:",
-      error
-    );
-
+    console.error("admin-profile POST failed");
+  
     return jsonResponse(
       {
         success: false,
-        error: error.message
+        error: "サーバー内部でエラーが発生しました"
       },
       500
     );
@@ -457,13 +452,9 @@ export async function onRequestGet(context) {
       );
 
     if (!authUsersResponse.ok) {
-      const text =
-        await authUsersResponse.text();
-
       console.error(
-        "Authentication users取得エラー:",
-        authUsersResponse.status,
-        text
+        "Authentication users fetch failed:",
+        authUsersResponse.status
       );
 
       return jsonResponse(
@@ -541,16 +532,12 @@ export async function onRequestGet(context) {
     });
 
   } catch (error) {
-
-    console.error(
-      "admin-profile GET error:",
-      error
-    );
-
+    console.error("admin-profile GET failed");
+  
     return jsonResponse(
       {
         success: false,
-        error: error.message
+        error: "サーバー内部でエラーが発生しました"
       },
       500
     );
@@ -764,9 +751,8 @@ export async function onRequestDelete(context) {
 
     if (!deleteProfileResponse.ok) {
       console.error(
-        "admin_profiles delete error:",
-        deleteProfileResponse.status,
-        deleteProfileData
+        "admin_profiles delete failed:",
+        deleteProfileResponse.status
       );
 
       return jsonResponse(
@@ -814,18 +800,15 @@ export async function onRequestDelete(context) {
 
     if (!deleteAuthResponse.ok) {
       console.error(
-        "Authentication user delete error:",
-        deleteAuthResponse.status,
-        deleteAuthData
+        "Authentication user delete failed:",
+        deleteAuthResponse.status
       );
 
       return jsonResponse(
         {
           success: false,
           error:
-            "Authenticationからユーザーを削除できませんでした",
-          detail:
-            deleteAuthData
+            "Authenticationからユーザーを削除できませんでした"
         },
         deleteAuthResponse.status
       );
@@ -848,16 +831,12 @@ export async function onRequestDelete(context) {
     });
 
   } catch (error) {
-
-    console.error(
-      "admin-profile DELETE error:",
-      error
-    );
-
+    console.error("admin-profile DELETE failed");
+  
     return jsonResponse(
       {
         success: false,
-        error: error.message
+        error: "サーバー内部でエラーが発生しました"
       },
       500
     );
