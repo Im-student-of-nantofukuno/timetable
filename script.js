@@ -5034,10 +5034,25 @@ async function fetchAllGasSubjects() {
     (async () => {
 
       try {
-        const response =
-          await fetch(
-            "/api/timetable?admin=subjects"
-          );
+                const {
+                  data: { session },
+                  error: sessionError
+                } = await window.supabaseClient.auth.getSession();
+        
+                if (sessionError || !session?.access_token) {
+                  throw new Error("科目一覧の取得にはログインが必要です");
+                }
+        
+                const response = await fetch(
+                  "/api/timetable?admin=subjects",
+                  {
+                    method: "GET",
+                    headers: {
+                      Authorization: `Bearer ${session.access_token}`
+                    },
+                    cache: "no-store"
+                  }
+                );
 
         if (!response.ok) {
           throw new Error(
