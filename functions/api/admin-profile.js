@@ -713,7 +713,66 @@ export async function onRequestDelete(context) {
       );
     }
 
+    // ========================================
+    // 最後のdeep管理者を保護
+    // ========================================
 
+    const deepAdminsResponse = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/admin_profiles?select=user_id&role=eq.deep`,
+      {
+        method: "GET",
+        headers: {
+          "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+          "Authorization":
+            `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
+        },
+        cache: "no-store"
+      }
+    );
+
+    if (!deepAdminsResponse.ok) {
+      console.error(
+        "deep管理者一覧の確認に失敗しました:",
+        deepAdminsResponse.status
+      );
+
+      return jsonResponse(
+        {
+          success: false,
+          error: "管理者の安全確認に失敗したため、削除を中止しました"
+        },
+        500
+      );
+    }
+
+    const deepAdmins = await deepAdminsResponse.json();
+
+    if (!Array.isArray(deepAdmins)) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "管理者の安全確認に失敗したため、削除を中止しました"
+        },
+        500
+      );
+    }
+
+    const targetIsDeepAdmin = deepAdmins.some(
+      admin => admin.user_id === targetUserId
+    );
+
+    if (
+      targetIsDeepAdmin &&
+      deepAdmins.length <= 1
+    ) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "最後のdeep管理者は削除できません"
+        },
+        400
+      );
+    }
     // ========================================
     // 6. admin_profilesから削除
     // ========================================
