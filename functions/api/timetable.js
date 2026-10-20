@@ -101,6 +101,35 @@ export async function onRequestGet(context) {
     }
     
     // GASへの読み取りリクエストは、認証付きPOSTで送信する
+    // 科目一覧：quick / deep のみ
+    if (admin === "subjects") {
+      const authResult =
+        await authenticateRegisteredUser(request, env);
+
+      if (!authResult.success) {
+        return jsonResponse(
+          {
+            success: false,
+            error: authResult.error
+          },
+          authResult.status
+        );
+      }
+
+      if (
+        authResult.role !== "quick" &&
+        authResult.role !== "deep"
+      ) {
+        return jsonResponse(
+          {
+            success: false,
+            error: "科目一覧を取得する権限がありません"
+          },
+          403
+        );
+      }
+    }
+    
     const gasReadSecret = env.GAS_READ_SECRET;
 
     if (!gasReadSecret) {
