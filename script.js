@@ -3243,55 +3243,70 @@ function installQuickExportButton(matrix, grade, day, gasData) {
   });
 }
 
+
 function getQuickExportData(grade, day, gasData) {
   const classes = gasData.classes || [];
-  const dayData = gasData.timetable?.[day] || [];
+  const dayData = gasData.timetable?.[day] || {};
   const subjects = gasData.subjects || [];
 
-  const getTeacherName = (subject) => {
+  // 管理画面のツールチップと同じ考え方で先生名を取得
+  function getTeacherName(subject) {
     if (!subject) return "";
 
-    // データに表示名が含まれている場合はそれを使う
-    const directName =
-      subject.teacher_name ||
-      subject.teacher_display_name ||
-      "";
+    const teacherId = String(
+      subject.teacher_id || ""
+    ).trim();
 
-    if (directName) return directName;
+    if (!teacherId) return "";
 
-    // 既に取得済みのプロフィールだけを利用する。
-    // 新しいAPI呼び出しや権限変更は行わない。
-    const teacherId = String(subject.teacher_id || "").trim();
     const profile = (state.adminProfiles || []).find(
-      (item) => String(item.user_id || "").trim() === teacherId
+      (item) =>
+        String(item.user_id || "").trim() === teacherId
     );
 
-    return profile?.display_name || "";
-  };
+    // UUIDに対応するプロフィールがなければ、
+    // teacher_idに直接入力された先生名をそのまま使う
+    return profile?.display_name || teacherId;
+  }
 
   const rows = state.data.periods.map((period) => ({
     period,
     cells: classes.map((gasClass) => {
       const classId = String(gasClass.class_id);
       const timetable = dayData[classId] || [];
+
       const item = timetable.find(
-        (entry) => Number(entry.period) === Number(period)
+        (entry) =>
+          Number(entry.period) === Number(period)
       );
 
-      // 変更後の科目があれば優先し、なければ基本時間割を使う
-      const subjectId = item?.subject_change || item?.subject_base || "";
+      // 浅い管理画面で変更された科目だけを出力する
+      // 基本時間割の科目は補完しない
+      const subjectId = item?.subject_change || "";
+
+      if (!subjectId) {
+        return {
+          subject: "",
+          teacher: ""
+        };
+      }
+
       const subject = subjects.find(
-        (entry) => String(entry.subject_id) === String(subjectId)
+        (entry) =>
+          String(entry.subject_id) === String(subjectId)
       );
 
       let teacherNames = [];
 
       if (Array.isArray(subject?.subject_ids)) {
-        // 合同授業は、構成する科目の担当者をまとめる
+        // 合同授業は構成科目の先生を取得する
         teacherNames = subject.subject_ids
-          .map((id) => subjects.find(
-            (entry) => String(entry.subject_id) === String(id)
-          ))
+          .map((id) =>
+            subjects.find(
+              (entry) =>
+                String(entry.subject_id) === String(id)
+            )
+          )
           .map(getTeacherName)
           .filter(Boolean);
       } else if (subject) {
@@ -3299,15 +3314,25 @@ function getQuickExportData(grade, day, gasData) {
         if (name) teacherNames = [name];
       }
 
-      const uniqueTeacherNames = [...new Set(teacherNames)];
+      const uniqueTeacherNames = [
+        ...new Set(teacherNames)
+      ];
+
+      const teacherName = uniqueTeacherNames.join(" / ");
 
       return {
-        subject: subjectId
-          ? getGasAdminSubjectDisplayName(gasData, subjectId, item)
-          : "",
-        teacher: uniqueTeacherNames.length
-          ? uniqueTeacherNames.join(" / ") + "先生"
-          : (subjectId ? "先生名未取得" : "")
+        subject: getGasAdminSubjectDisplayName(
+          gasData,
+          subjectId,
+          item
+        ),
+        teacher: teacherName
+          ? uniqueTeacherNames
+              .map((name) =>
+                name.endsWith("先生") ? name : `${name}先生`
+              )
+              .join(" / ")
+          : ""
       };
     })
   }));
@@ -3320,7 +3345,10 @@ function getQuickExportData(grade, day, gasData) {
       month: "2-digit",
       day: "2-digit"
     }),
-    classes: classes.map(convertGasClassForDisplay),
+    classes: classes.map((gasClass) => ({
+      ...convertGasClassForDisplay(gasClass),
+      courseLabel: String(gasClass.course || "").trim()
+    })),
     rows
   };
 }
@@ -3406,7 +3434,7 @@ async function downloadQuickTimetablePng(grade, day, gasData) {
     ctx.fillText(`${cls.label}`, x + cellWidth / 2, tableY + 34);
     ctx.font = "12px sans-serif";
     ctx.fillText(
-      state.data.courses[cls.course] || "",
+      cls.courseLabel || state.data.courses[cls.course] || "",
       x + cellWidth / 2,
       tableY + 60
     );
@@ -3478,7 +3506,9 @@ function printQuickTimetable(grade, day, gasData) {
   const headers = data.classes.map((cls) => `
     <th>
       <div>${escape(cls.label)}</div>
-      <small>${escape(state.data.courses[cls.course] || "")}</small>
+      <small>${escape(
+        cls.courseLabel || state.data.courses[cls.course] || ""
+      )}</small>
     </th>
   `).join("");
 
