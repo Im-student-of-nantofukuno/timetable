@@ -2847,6 +2847,8 @@ async function renderQuickAdmin() {
     classes.map(convertGasClassForDisplay)
   );
 
+  installQuickExportButton(matrix, grade, state.adminDay || "月", gasData);
+
   // 現在選択されている曜日
   const day =
     state.adminDay || "月";
@@ -3148,6 +3150,393 @@ function appendMatrixHeader(matrix, classes) {
 
     matrix.append(cell);
   });
+}
+
+
+/* ========================================
+   浅い管理画面：時間割の画像保存・印刷
+   ======================================== */
+
+function closeQuickExportMenu() {
+  document.getElementById("quick-export-menu")?.remove();
+}
+
+function installQuickExportButton(matrix, grade, day, gasData) {
+  closeQuickExportMenu();
+
+  const corner = matrix.firstElementChild;
+  if (!corner) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "matrix-cell matrix-cell--corner matrix-export-trigger";
+  button.setAttribute("aria-label", "時間割を保存・印刷");
+  button.title = "時間割を画像保存・印刷";
+
+  button.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"
+        fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+
+  corner.replaceWith(button);
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeQuickExportMenu();
+
+    const menu = document.createElement("div");
+    menu.id = "quick-export-menu";
+    menu.className = "quick-export-menu";
+    menu.innerHTML = `
+      <button type="button" data-export-action="png">
+        <span aria-hidden="true">▧</span>
+        画像として保存（PNG）
+      </button>
+      <button type="button" data-export-action="print">
+        <span aria-hidden="true">▤</span>
+        印刷する
+      </button>
+    `;
+
+    document.body.appendChild(menu);
+
+    const rect = button.getBoundingClientRect();
+    menu.style.left = `${Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)
+    )}px`;
+    menu.style.top = `${Math.min(
+      rect.bottom + 6,
+      window.innerHeight - menu.offsetHeight - 8
+    )}px`;
+
+    menu.querySelector('[data-export-action="png"]')
+      .addEventListener("click", async () => {
+        closeQuickExportMenu();
+        try {
+          await downloadQuickTimetablePng(grade, day, gasData);
+        } catch (error) {
+          console.error("時間割PNG保存エラー:", error);
+          showToast("画像の保存に失敗しました。", 4000, "error");
+        }
+      });
+
+    menu.querySelector('[data-export-action="print"]')
+      .addEventListener("click", () => {
+        closeQuickExportMenu();
+        printQuickTimetable(grade, day, gasData);
+      });
+
+    const closeOnOutsideClick = (e) => {
+      if (!menu.contains(e.target) && e.target !== button) {
+        closeQuickExportMenu();
+        document.removeEventListener("click", closeOnOutsideClick);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener("click", closeOnOutsideClick);
+    }, 0);
+  });
+}
+
+function getQuickExportData(grade, day, gasData) {
+  const classes = gasData.classes || [];
+  const dayData = gasData.timetable?.[day] || [];
+  const subjects = gasData.subjects || [];
+
+  const getTeacherName = (subject) => {
+    if (!subject) return "";
+
+    // データに表示名が含まれている場合はそれを使う
+    const directName =
+      subject.teacher_name ||
+      subject.teacher_display_name ||
+      "";
+
+    if (directName) return directName;
+
+    // 既に取得済みのプロフィールだけを利用する。
+    // 新しいAPI呼び出しや権限変更は行わない。
+    const teacherId = String(subject.teacher_id || "").trim();
+    const profile = (state.adminProfiles || []).find(
+      (item) => String(item.user_id || "").trim() === teacherId
+    );
+
+    return profile?.display_name || "";
+  };
+
+  const rows = state.data.periods.map((period) => ({
+    period,
+    cells: classes.map((gasClass) => {
+      const classId = String(gasClass.class_id);
+      const timetable = dayData[classId] || [];
+      const item = timetable.find(
+        (entry) => Number(entry.period) === Number(period)
+      );
+
+      // 変更後の科目があれば優先し、なければ基本時間割を使う
+      const subjectId = item?.subject_change || item?.subject_base || "";
+      const subject = subjects.find(
+        (entry) => String(entry.subject_id) === String(subjectId)
+      );
+
+      let teacherNames = [];
+
+      if (Array.isArray(subject?.subject_ids)) {
+        // 合同授業は、構成する科目の担当者をまとめる
+        teacherNames = subject.subject_ids
+          .map((id) => subjects.find(
+            (entry) => String(entry.subject_id) === String(id)
+          ))
+          .map(getTeacherName)
+          .filter(Boolean);
+      } else if (subject) {
+        const name = getTeacherName(subject);
+        if (name) teacherNames = [name];
+      }
+
+      const uniqueTeacherNames = [...new Set(teacherNames)];
+
+      return {
+        subject: subjectId
+          ? getGasAdminSubjectDisplayName(gasData, subjectId, item)
+          : "",
+        teacher: uniqueTeacherNames.length
+          ? uniqueTeacherNames.join(" / ") + "先生"
+          : (subjectId ? "先生名未取得" : "")
+      };
+    })
+  }));
+
+  return {
+    grade,
+    day,
+    date: new Date().toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }),
+    classes: classes.map(convertGasClassForDisplay),
+    rows
+  };
+}
+
+function drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+  const chars = Array.from(String(text || ""));
+  let line = "";
+  let lineNumber = 0;
+
+  for (const char of chars) {
+    const testLine = line + char;
+
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      ctx.fillText(line, x, y + lineNumber * lineHeight);
+      lineNumber++;
+      line = char;
+
+      if (lineNumber >= maxLines - 1) break;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line && lineNumber < maxLines) {
+    ctx.fillText(line, x, y + lineNumber * lineHeight);
+  }
+}
+
+async function downloadQuickTimetablePng(grade, day, gasData) {
+  const data = getQuickExportData(grade, day, gasData);
+  const periodWidth = 64;
+  const cellWidth = Math.max(115, Math.min(175, 1100 / data.classes.length));
+  const cellHeight = 100;
+  const left = 24;
+  const top = 92;
+  const width = left * 2 + periodWidth + cellWidth * data.classes.length;
+  const height = top + cellHeight * (data.rows.length + 1) + 24;
+
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = "#222222";
+  ctx.textAlign = "left";
+  ctx.font = "bold 28px sans-serif";
+  ctx.fillText(`${data.grade}年生 時間割`, left, 38);
+
+  ctx.font = "16px sans-serif";
+  ctx.fillText(`${data.day}曜日　${data.date}`, left, 66);
+
+  const tableX = left;
+  const tableY = top;
+  const tableWidth = periodWidth + cellWidth * data.classes.length;
+
+  ctx.strokeStyle = "#555555";
+  ctx.lineWidth = 1;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const drawCell = (x, y, w, h, fill) => {
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "#555555";
+    ctx.strokeRect(x, y, w, h);
+  };
+
+  drawCell(tableX, tableY, periodWidth, cellHeight, "#eeeeee");
+  ctx.fillStyle = "#222222";
+  ctx.font = "bold 13px sans-serif";
+  ctx.fillText("時限", tableX + periodWidth / 2, tableY + cellHeight / 2);
+
+  data.classes.forEach((cls, index) => {
+    const x = tableX + periodWidth + index * cellWidth;
+    drawCell(x, tableY, cellWidth, cellHeight, "#eeeeee");
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillStyle = "#222222";
+    ctx.fillText(`${cls.label}`, x + cellWidth / 2, tableY + 34);
+    ctx.font = "12px sans-serif";
+    ctx.fillText(
+      state.data.courses[cls.course] || "",
+      x + cellWidth / 2,
+      tableY + 60
+    );
+  });
+
+  data.rows.forEach((row, rowIndex) => {
+    const y = tableY + cellHeight * (rowIndex + 1);
+    drawCell(tableX, y, periodWidth, cellHeight, "#eeeeee");
+
+    ctx.fillStyle = "#222222";
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText(`${row.period}限`, tableX + periodWidth / 2, y + cellHeight / 2);
+
+    row.cells.forEach((cell, colIndex) => {
+      const x = tableX + periodWidth + colIndex * cellWidth;
+      drawCell(x, y, cellWidth, cellHeight, "#ffffff");
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#222222";
+      ctx.font = "bold 14px sans-serif";
+      drawWrappedCanvasText(
+        ctx, cell.subject, x + cellWidth / 2, y + 27,
+        cellWidth - 12, 17, 2
+      );
+
+      ctx.strokeStyle = "#888888";
+      ctx.beginPath();
+      ctx.moveTo(x + 8, y + 57);
+      ctx.lineTo(x + cellWidth - 8, y + 57);
+      ctx.stroke();
+
+      ctx.font = "12px sans-serif";
+      drawWrappedCanvasText(
+        ctx, cell.teacher, x + cellWidth / 2, y + 77,
+        cellWidth - 12, 15, 2
+      );
+    });
+  });
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error("PNGを生成できませんでした"));
+    }, "image/png");
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `時間割_${data.grade}年_${data.day}曜日.png`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function printQuickTimetable(grade, day, gasData) {
+  const data = getQuickExportData(grade, day, gasData);
+
+  // 印刷用ウィンドウをクリック操作中に開く
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    showToast("印刷画面を開けませんでした。ポップアップを許可してください。", 5000, "error");
+    return;
+  }
+
+  const escape = (value) => escapeHtml(String(value || ""));
+
+  const headers = data.classes.map((cls) => `
+    <th>
+      <div>${escape(cls.label)}</div>
+      <small>${escape(state.data.courses[cls.course] || "")}</small>
+    </th>
+  `).join("");
+
+  const rows = data.rows.map((row) => `
+    <tr>
+      <th class="period">${row.period}限</th>
+      ${row.cells.map((cell) => `
+        <td>
+          <div class="subject">${escape(cell.subject)}</div>
+          <div class="separator"></div>
+          <div class="teacher">${escape(cell.teacher)}</div>
+        </td>
+      `).join("")}
+    </tr>
+  `).join("");
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+      <meta charset="UTF-8">
+      <title>${escape(data.grade)}年生 時間割</title>
+      <style>
+        @page { size: A4 landscape; margin: 8mm; }
+        * { box-sizing: border-box; }
+        body { font-family: sans-serif; color: #222; margin: 0; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        .meta { margin-bottom: 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { border: 1px solid #555; padding: 4px; text-align: center; }
+        thead th, .period { background: #eee; }
+        td { height: 20mm; }
+        .subject { font-size: 12px; font-weight: bold; overflow-wrap: anywhere; }
+        .separator { border-top: 1px solid #999; margin: 6px 0; }
+        .teacher { font-size: 10px; overflow-wrap: anywhere; }
+        small { font-size: 9px; font-weight: normal; }
+        @media screen {
+          body { padding: 16px; }
+          .print-button { margin-bottom: 12px; padding: 8px 16px; }
+        }
+        @media print {
+          .print-button { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <button class="print-button" onclick="window.print()">印刷する</button>
+      <h1>${escape(data.grade)}年生 時間割</h1>
+      <div class="meta">${escape(data.day)}曜日　${escape(data.date)}</div>
+      <table>
+        <thead><tr><th class="period">時限</th>${headers}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
 }
 
 async function editChange(classItem, period, existingChange) {
