@@ -3244,30 +3244,72 @@ function installQuickExportButton(matrix, grade, day, gasData) {
 }
 
 
-function getQuickExportData(grade, day, gasData) {
+async function getQuickExportData(grade, day, gasData) {
   const classes = gasData.classes || [];
   const dayData = gasData.timetable?.[day] || {};
   const subjects = gasData.subjects || [];
 
-  // 管理画面のツールチップと同じ考え方で先生名を取得
+  // UUIDと先生の表示名を対応させる
+  let profiles = state.adminProfiles || [];
+
+  try {
+    const { data, error } = await window.supabaseClient
+      .from("admin_profiles")
+      .select("user_id, display_name");
+
+    if (!error && Array.isArray(data)) {
+      profiles = data;
+    }
+  } catch (error) {
+    console.error("先生の表示名取得に失敗:", error);
+  }
+
   function getTeacherName(subject) {
-    if (!subject) return "";
-
-    const teacherId = String(
-      subject.teacher_id || ""
-    ).trim();
-
+    const teacherId = String(subject?.teacher_id || "").trim();
     if (!teacherId) return "";
 
-    const profile = (state.adminProfiles || []).find(
-      (item) =>
-        String(item.user_id || "").trim() === teacherId
+    const profile = profiles.find(
+      (item) => String(item.user_id || "").trim() === teacherId
     );
 
-    // UUIDに対応するプロフィールがなければ、
-    // teacher_idに直接入力された先生名をそのまま使う
+    // UUIDならプロフィールの表示名、直接入力された名前ならその名前
     return profile?.display_name || teacherId;
   }
+
+  // 今日を含め、次に来る対象曜日の日付を計算
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  const targetWeekday = weekdays.indexOf(day);
+
+  const targetDate = new Date(today);
+
+  if (targetWeekday >= 0) {
+    const daysUntil = (targetWeekday - today.getDay() + 7) % 7;
+    targetDate.setDate(targetDate.getDate() + daysUntil);
+  }
+
+  const pad = (number) => String(number).padStart(2, "0");
+  const targetDateISO = [
+    targetDate.getFullYear(),
+    pad(targetDate.getMonth() + 1),
+    pad(targetDate.getDate())
+  ].join("-");
+
+  const date = [
+    targetDate.getFullYear(),
+    pad(targetDate.getMonth() + 1),
+    pad(targetDate.getDate())
+  ].join("/");
+
+  const exportedAt = new Date().toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 
   const rows = state.data.periods.map((period) => ({
     period,
@@ -3276,35 +3318,27 @@ function getQuickExportData(grade, day, gasData) {
       const timetable = dayData[classId] || [];
 
       const item = timetable.find(
-        (entry) =>
-          Number(entry.period) === Number(period)
+        (entry) => Number(entry.period) === Number(period)
       );
 
-      // 浅い管理画面で変更された科目だけを出力する
-      // 基本時間割の科目は補完しない
+      // 変更された科目だけを表示。基本時間割では補完しない
       const subjectId = item?.subject_change || "";
 
       if (!subjectId) {
-        return {
-          subject: "",
-          teacher: ""
-        };
+        return { subject: "", teacher: "" };
       }
 
       const subject = subjects.find(
-        (entry) =>
-          String(entry.subject_id) === String(subjectId)
+        (entry) => String(entry.subject_id) === String(subjectId)
       );
 
       let teacherNames = [];
 
       if (Array.isArray(subject?.subject_ids)) {
-        // 合同授業は構成科目の先生を取得する
         teacherNames = subject.subject_ids
           .map((id) =>
             subjects.find(
-              (entry) =>
-                String(entry.subject_id) === String(id)
+              (entry) => String(entry.subject_id) === String(id)
             )
           )
           .map(getTeacherName)
@@ -3314,11 +3348,7 @@ function getQuickExportData(grade, day, gasData) {
         if (name) teacherNames = [name];
       }
 
-      const uniqueTeacherNames = [
-        ...new Set(teacherNames)
-      ];
-
-      const teacherName = uniqueTeacherNames.join(" / ");
+      const uniqueTeacherNames = [...new Set(teacherNames)];
 
       return {
         subject: getGasAdminSubjectDisplayName(
@@ -3326,13 +3356,11 @@ function getQuickExportData(grade, day, gasData) {
           subjectId,
           item
         ),
-        teacher: teacherName
-          ? uniqueTeacherNames
-              .map((name) =>
-                name.endsWith("先生") ? name : `${name}先生`
-              )
-              .join(" / ")
-          : ""
+        teacher: uniqueTeacherNames
+          .map((name) =>
+            name.endsWith("先生") ? name : `${name}先生`
+          )
+          .join(" / ")
       };
     })
   }));
@@ -3340,11 +3368,9 @@ function getQuickExportData(grade, day, gasData) {
   return {
     grade,
     day,
-    date: new Date().toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }),
+    date,
+    targetDateISO,
+    exportedAt,
     classes: classes.map((gasClass) => ({
       ...convertGasClassForDisplay(gasClass),
       courseLabel: String(gasClass.course || "").trim()
@@ -3378,12 +3404,12 @@ function drawWrappedCanvasText(ctx, text, x, y, maxWidth, lineHeight, maxLines =
 }
 
 async function downloadQuickTimetablePng(grade, day, gasData) {
-  const data = getQuickExportData(grade, day, gasData);
+  const data = await getQuickExportData(grade, day, gasData);
   const periodWidth = 64;
   const cellWidth = Math.max(115, Math.min(175, 1100 / data.classes.length));
   const cellHeight = 100;
   const left = 24;
-  const top = 92;
+  const top = 112;
   const width = left * 2 + periodWidth + cellWidth * data.classes.length;
   const height = top + cellHeight * (data.rows.length + 1) + 24;
 
@@ -3402,8 +3428,19 @@ async function downloadQuickTimetablePng(grade, day, gasData) {
   ctx.font = "bold 28px sans-serif";
   ctx.fillText(`${data.grade}年生 時間割`, left, 38);
 
-  ctx.font = "16px sans-serif";
-  ctx.fillText(`${data.day}曜日　${data.date}`, left, 66);
+  ctx.font = "14px sans-serif";
+  ctx.fillText(
+    `${data.day}曜日　対象日: ${data.date}`,
+    left,
+    62
+  );
+  
+  ctx.font = "12px sans-serif";
+  ctx.fillText(
+    `出力日時: ${data.exportedAt}`,
+    left,
+    82
+  );
 
   const tableX = left;
   const tableY = top;
@@ -3485,21 +3522,26 @@ async function downloadQuickTimetablePng(grade, day, gasData) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `時間割_${data.grade}年_${data.day}曜日.png`;
+  link.download =
+  `時間割変更_${data.grade}年_${data.targetDateISO}.png`;
   link.click();
   URL.revokeObjectURL(url);
 }
 
-function printQuickTimetable(grade, day, gasData) {
-  const data = getQuickExportData(grade, day, gasData);
-
-  // 印刷用ウィンドウをクリック操作中に開く
+async function printQuickTimetable(grade, day, gasData) {
+  // 非同期処理より先に開き、ポップアップ制限を避ける
   const printWindow = window.open("", "_blank");
 
   if (!printWindow) {
-    showToast("印刷画面を開けませんでした。ポップアップを許可してください。", 5000, "error");
+    showToast(
+      "印刷画面を開けませんでした。ポップアップを許可してください。",
+      5000,
+      "error"
+    );
     return;
   }
+
+  const data = await getQuickExportData(grade, day, gasData);
 
   const escape = (value) => escapeHtml(String(value || ""));
 
@@ -3531,7 +3573,9 @@ function printQuickTimetable(grade, day, gasData) {
     <html lang="ja">
     <head>
       <meta charset="UTF-8">
-      <title>${escape(data.grade)}年生 時間割</title>
+      <title>${escape(
+        `時間割変更_${data.grade}年_${data.targetDateISO}`
+      )}</title>
       <style>
         @page { size: A4 landscape; margin: 8mm; }
         * { box-sizing: border-box; }
@@ -3558,7 +3602,11 @@ function printQuickTimetable(grade, day, gasData) {
     <body>
       <button class="print-button" onclick="window.print()">印刷する</button>
       <h1>${escape(data.grade)}年生 時間割</h1>
-      <div class="meta">${escape(data.day)}曜日　${escape(data.date)}</div>
+      <div class="meta">
+        ${escape(data.day)}曜日　
+        対象日: ${escape(data.date)}　
+        出力日時: ${escape(data.exportedAt)}
+      </div>
       <table>
         <thead><tr><th class="period">時限</th>${headers}</tr></thead>
         <tbody>${rows}</tbody>
