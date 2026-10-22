@@ -156,7 +156,7 @@ export async function onRequestPost(context) {
         !isValidTargetArray(
           notification.targets.courses,
           NOTIFICATION_TARGETS.courses
-        )
+        ) ||
         (
           notification.kind !== undefined &&
           typeof notification.kind !== "string"
