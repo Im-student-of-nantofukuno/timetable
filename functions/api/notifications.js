@@ -105,6 +105,32 @@ export async function onRequestPost(context) {
       "Content-Type": "application/json"
     };
 
+    const NOTIFICATION_TARGETS = {
+      grades: new Set(["all", "1", "2", "3"]),
+      classes: new Set(["all", "1", "2", "3", "4", "5", "6", "7"]),
+      courses: new Set([
+        "all",
+        "none",
+        "humanities",
+        "science",
+        "explore-humanities",
+        "explore-science"
+      ])
+    };
+    function isValidTargetArray(values, allowedValues) {
+      return (
+        Array.isArray(values) &&
+        values.length >= 1 &&
+        values.length <= allowedValues.size &&
+        values.every(
+          value =>
+            typeof value === "string" &&
+            allowedValues.has(value)
+        ) &&
+        new Set(values).size === values.length
+      );
+    }
+    
     if (body.action === "insert") {
       const notification = body.notification;
 
@@ -119,9 +145,18 @@ export async function onRequestPost(context) {
         typeof notification.display_end !== "string" ||
         !Number.isFinite(Date.parse(notification.display_end)) ||
         !notification.targets ||
-        !Array.isArray(notification.targets.grades) ||
-        !Array.isArray(notification.targets.classes) ||
-        !Array.isArray(notification.targets.courses) ||
+        !isValidTargetArray(
+          notification.targets.grades,
+          NOTIFICATION_TARGETS.grades
+        ) ||
+        !isValidTargetArray(
+          notification.targets.classes,
+          NOTIFICATION_TARGETS.classes
+        ) ||
+        !isValidTargetArray(
+          notification.targets.courses,
+          NOTIFICATION_TARGETS.courses
+        )
         (
           notification.kind !== undefined &&
           typeof notification.kind !== "string"
