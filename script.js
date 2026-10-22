@@ -2966,7 +2966,7 @@ function renderAdminPosts() {
       <p>${escapeHtml(post.title)}｜${escapeHtml(formatNotificationRange(post))}<br>${escapeHtml(post.body)}</p>
       ${
         post.kind !== "history"
-          ? `<small>${formatTargets(post.targets)}</small>`
+          ? `<small>${escapeHtml(formatTargets(post.targets))}</small>`
           : ""
       }
     `;
