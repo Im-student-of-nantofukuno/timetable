@@ -4,7 +4,7 @@ export async function onRequestPost(context) {
     const env = context.env;
 
     // ========================================
-    // 1. ブラウザからログイン情報を受け取る
+    // 1. ブラウザからログイン情報を受け取る 
     // ========================================
     const authorization = request.headers.get("Authorization");
 
