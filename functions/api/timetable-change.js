@@ -182,19 +182,19 @@ if (deepActions.includes(action)) {
     } catch (error) {
       console.error("GAS response JSON parsing failed");
     
-      if (!gasResponse.ok || gasData?.success !== true) {
-        console.error("GAS timetable change failed");
-      
-        return jsonResponse(
-          {
-            success: false,
-            error: "時間割変更の処理に失敗しました"
-          },
-          502
-        );
-      }
+      return jsonResponse(
+        {
+          success: false,
+          error: "時間割変更の処理に失敗しました"
+        },
+        502
+      );
+    }
 
-    return jsonResponse(gasData, 200);
+    return jsonResponse(
+      gasData,
+      gasResponse.ok ? 200 : 500
+    );
   
   } catch (error) {
     console.error("timetable-change request failed");
