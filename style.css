@@ -1560,3 +1560,71 @@ button.matrix-cell:hover {
     display: none !important;
   }
 }
+
+
+/* ========================================
+   管理画面：一括編集ツールバー
+   ======================================== */
+.batch-edit-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color, #d6dbe1);
+  border-radius: 10px;
+  background: var(--panel-background, #fff);
+}
+.batch-edit-toolbar__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 190px;
+}
+.batch-edit-count {
+  font-size: 0.95rem;
+}
+.batch-edit-hint {
+  color: var(--muted-text, #626b75);
+  font-size: 0.78rem;
+}
+.batch-edit-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.batch-edit-toolbar__actions button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid #aeb7c2;
+  border-radius: 7px;
+  background: #fff;
+  color: #1f2933;
+  font: inherit;
+  cursor: pointer;
+}
+.batch-edit-toolbar__actions .batch-edit-save {
+  border-color: #1456a0;
+  background: #1456a0;
+  color: #fff;
+  font-weight: 700;
+}
+.batch-edit-toolbar__actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 640px) {
+  .batch-edit-toolbar {
+    align-items: stretch;
+  }
+  .batch-edit-toolbar__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .batch-edit-toolbar__actions button {
+    width: 100%;
+  }
+}
