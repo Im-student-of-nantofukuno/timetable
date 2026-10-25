@@ -3090,12 +3090,21 @@ async function renderDeepAdmin() {
             Number(item.period) === Number(period)
         );
 
-      // 基本時間割
-      const displaySubjectId =
-        timetableItem?.subject_base || "";
+      // 基本時間割。未保存の編集があれば、その値を画面に表示する。
+      const pendingBaseEdit = getPendingTimetableEdit(
+        "updateTimetableBase",
+        classId,
+        day,
+        period,
+        grade
+      );
+      const displaySubjectId = pendingBaseEdit
+        ? pendingBaseEdit.subjectBase
+        : (timetableItem?.subject_base || "");
       
+      // 未保存編集を含めて再計算した重複状態を表示する。
       const isConflict =
-        hasAdminConflict(
+        hasAdminCellConflict(
           grade,
           day,
           classId,
