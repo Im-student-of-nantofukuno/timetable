@@ -506,6 +506,26 @@ button.matrix-cell:hover {
   background: var(--cell-gray);
 }
 
+/* 管理画面のクラス見出し：○○Hの下にコースを小さく表示 */
+.matrix-cell--class-header {
+  flex-direction: column;
+}
+
+.matrix-header-class-label {
+  display: block;
+  font-size: 1em;
+  line-height: 1.1;
+}
+
+.matrix-header-course-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.48em;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
 .subject-humanities {
   background: var(--soft-red-bg);
 }
