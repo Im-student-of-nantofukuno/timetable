@@ -4130,15 +4130,15 @@ async function handlePostSubmit(event) {
   const displayEnd = `${endDate}T23:59:59+09:00`;
   
   
--  const courseNameMap = {
--    all: "all",
--    none: "なし",
--    humanities: "文系",
--    science: "理系",
--    "explore-humanities": "探文",
--    "explore-science": "探理"
--  };
--  
+  const courseNameMap = {
+    all: "all",
+    none: "なし",
+    humanities: "文系",
+    science: "理系",
+    "explore-humanities": "探文",
+    "explore-science": "探理"
+  };
+  
    const notification = {
      id: `post-${Date.now()}`,
      kind: state.adminMode,
