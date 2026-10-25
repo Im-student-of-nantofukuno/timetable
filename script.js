@@ -58,7 +58,16 @@ const state = {
     gasAllSubjectsPromise : null,
     gasAllAdminTimetablesPromise : null,
     gasTeacherTimetableCache: {},
-    gasAdminTimetablePromises: {}
+    gasAdminTimetablePromises: {},
+    pendingTimetableEdits: {},
+    pendingEditUndoStack: [],
+    pendingEditRedoStack: [],
+    pendingConflictCells: {},
+    pendingConflictPairs: {},
+    pendingConflictToastKeys: {},
+    pendingConflictSubjects: null,
+    pendingConflictTimetables: null,
+    batchEditKeyboardInstalled: false
   }
 };
 
@@ -2788,6 +2797,9 @@ async function renderQuickAdmin() {
 
   if (!matrix) return;
 
+  ensureBatchEditToolbar("quick");
+  installBatchEditKeyboardShortcuts();
+
   
  // ========================================
   // 重複一覧と学年時間割を並行して取得
@@ -2884,8 +2896,16 @@ async function renderQuickAdmin() {
             Number(period)
         );
 
-      const changeSubjectId =
-        timetableItem?.subject_change || "";
+      const pendingEdit = getPendingTimetableEdit(
+        "updateTimetableChange",
+        classId,
+        day,
+        period,
+        grade
+      );
+      const changeSubjectId = pendingEdit
+        ? pendingEdit.subjectChange
+        : (timetableItem?.subject_change || "");
 
       const displayName =
         changeSubjectId || "";
@@ -2893,7 +2913,7 @@ async function renderQuickAdmin() {
       const isChanged =
         Boolean(changeSubjectId);
       const isConflict =
-        hasAdminConflict(
+        hasAdminCellConflict(
           grade,
           day,
           classId,
@@ -2936,7 +2956,7 @@ async function renderQuickAdmin() {
           editChange(
             classItem,
             period,
-            null
+            timetableItem || null
           );
         }
       );
@@ -2994,6 +3014,8 @@ async function renderDeepAdmin() {
 
   if (!matrix) return;
 
+  ensureBatchEditToolbar("deep");
+  installBatchEditKeyboardShortcuts();
   state.deepAdminDay = day;
 
   if (
@@ -3617,119 +3639,656 @@ async function printQuickTimetable(grade, day, gasData) {
   printWindow.document.close();
 }
 
-async function editChange(classItem, period, existingChange) {
-  const current =
-    existingChange?.subject_change ||
-    existingChange?.subject ||
-    "";
+// ========================================
+// 管理画面の一括編集・Undo/Redo
+// ========================================
+function cloneTimetableEditMap(source = {}) {
+  return JSON.parse(JSON.stringify(source));
+}
 
-  // ========================================
-  // 全学年の科目一覧を取得
-  // ========================================
-  const [
-    allSubjects,
-    allTimetables
-  ] = await Promise.all([
+function getTimetableEditKey(action, classId, day, period, grade) {
+  return [
+    action,
+    String(grade),
+    String(classId),
+    String(day),
+    String(period)
+  ].join("|");
+}
+
+function getPendingTimetableEdit(action, classId, day, period, grade) {
+  const edits = state.data.pendingTimetableEdits || {};
+  if (grade !== undefined && grade !== null) {
+    return edits[getTimetableEditKey(action, classId, day, period, grade)] || null;
+  }
+
+  return Object.values(edits).find(edit =>
+    edit.action === action &&
+    String(edit.classId) === String(classId) &&
+    String(edit.day) === String(day) &&
+    Number(edit.period) === Number(period)
+  ) || null;
+}
+
+function getPendingEditCount(action = null) {
+  return Object.values(state.data.pendingTimetableEdits || {})
+    .filter(edit => !action || edit.action === action)
+    .length;
+}
+
+function hasAdminCellConflict(grade, day, classId, period) {
+  // 全時間割を使ったローカル再計算が済んでいれば、それを優先する。
+  // これにより、未保存編集で解消した重複が古いサーバー結果で赤く残らない。
+  if (state.data.pendingConflictTimetables) {
+    return Boolean(
+      state.data.pendingConflictCells?.[`${day}|${period}|${classId}`]
+    );
+  }
+  return hasAdminConflict(grade, day, classId, period);
+}
+
+function installBatchEditKeyboardShortcuts() {
+  if (state.data.batchEditKeyboardInstalled) return;
+  state.data.batchEditKeyboardInstalled = true;
+
+  window.addEventListener("beforeunload", event => {
+    if (getPendingEditCount() > 0) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (
+      state.view !== "quick-admin" &&
+      state.view !== "deep-admin"
+    ) return;
+
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (
+        target.isContentEditable ||
+        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+      )
+    ) return;
+
+    const modifier = event.ctrlKey || event.metaKey;
+    if (!modifier) return;
+
+    const key = String(event.key || "").toLowerCase();
+
+    if (key === "z" && event.shiftKey) {
+      if (state.data.pendingEditRedoStack.length) {
+        event.preventDefault();
+        redoPendingTimetableEdit();
+      }
+      return;
+    }
+
+    if (key === "z") {
+      if (state.data.pendingEditUndoStack.length > 1) {
+        event.preventDefault();
+        undoPendingTimetableEdit();
+      }
+      return;
+    }
+
+    if (key === "y") {
+      if (state.data.pendingEditRedoStack.length) {
+        event.preventDefault();
+        redoPendingTimetableEdit();
+      }
+    }
+  });
+}
+
+function ensureBatchEditToolbar(mode) {
+  const matrix = mode === "quick"
+    ? $("#change-matrix")
+    : $("#base-matrix");
+  if (!matrix) return;
+
+  const panel = matrix.closest(".matrix-panel");
+  if (!panel) return;
+
+  let toolbar = panel.querySelector(".batch-edit-toolbar");
+  if (!toolbar) {
+    toolbar = document.createElement("div");
+    toolbar.className = "batch-edit-toolbar";
+    toolbar.innerHTML = `
+      <div class="batch-edit-toolbar__summary" aria-live="polite">
+        <strong class="batch-edit-count">未保存の変更はありません</strong>
+        <span class="batch-edit-hint">編集内容は「まとめて保存」するまで反映されません。</span>
+      </div>
+      <div class="batch-edit-toolbar__actions">
+        <button type="button" class="batch-edit-undo">元に戻す</button>
+        <button type="button" class="batch-edit-redo">やり直す</button>
+        <button type="button" class="batch-edit-discard">変更を破棄</button>
+        <button type="button" class="batch-edit-save">まとめて保存</button>
+      </div>
+    `;
+    panel.insertBefore(toolbar, matrix);
+
+    toolbar.querySelector(".batch-edit-undo").addEventListener("click", undoPendingTimetableEdit);
+    toolbar.querySelector(".batch-edit-redo").addEventListener("click", redoPendingTimetableEdit);
+    toolbar.querySelector(".batch-edit-discard").addEventListener("click", () => {
+      const action = mode === "quick"
+        ? "updateTimetableChange"
+        : "updateTimetableBase";
+      discardPendingTimetableEdits(action);
+    });
+    toolbar.querySelector(".batch-edit-save").addEventListener("click", () => {
+      const action = mode === "quick"
+        ? "updateTimetableChange"
+        : "updateTimetableBase";
+      savePendingTimetableEdits(action);
+    });
+  }
+
+  toolbar.dataset.mode = mode;
+  updateBatchEditToolbar();
+}
+
+function updateBatchEditToolbar() {
+  document.querySelectorAll(".batch-edit-toolbar").forEach(toolbar => {
+    const mode = toolbar.dataset.mode;
+    const action = mode === "quick"
+      ? "updateTimetableChange"
+      : "updateTimetableBase";
+    const count = getPendingEditCount(action);
+    const countElement = toolbar.querySelector(".batch-edit-count");
+    const saveButton = toolbar.querySelector(".batch-edit-save");
+    const discardButton = toolbar.querySelector(".batch-edit-discard");
+    const undoButton = toolbar.querySelector(".batch-edit-undo");
+    const redoButton = toolbar.querySelector(".batch-edit-redo");
+
+    if (countElement) {
+      countElement.textContent = count
+        ? `未保存の変更：${count}件`
+        : "未保存の変更はありません";
+    }
+    if (saveButton) saveButton.disabled = count === 0;
+    if (discardButton) discardButton.disabled = count === 0;
+    if (undoButton) undoButton.disabled = state.data.pendingEditUndoStack.length <= 1;
+    if (redoButton) redoButton.disabled = state.data.pendingEditRedoStack.length === 0;
+  });
+}
+
+function recordPendingEditSnapshot() {
+  const snapshot = cloneTimetableEditMap(state.data.pendingTimetableEdits || {});
+  state.data.pendingEditUndoStack.push(snapshot);
+  if (state.data.pendingEditUndoStack.length > 100) {
+    state.data.pendingEditUndoStack.shift();
+  }
+  state.data.pendingEditRedoStack = [];
+}
+
+function refreshBatchEditScreen() {
+  updateBatchEditToolbar();
+  if (state.view === "quick-admin") {
+    renderQuickAdmin();
+  } else if (state.view === "deep-admin") {
+    renderDeepAdmin();
+  }
+}
+
+async function updatePendingConflictState(allSubjects = state.data.pendingConflictSubjects,
+                                         allTimetables = state.data.pendingConflictTimetables) {
+  if (!Array.isArray(allSubjects) || !allTimetables) {
+    const [subjects, timetables] = await Promise.all([
+      fetchAllGasSubjects(),
+      fetchAllAdminTimetables()
+    ]);
+    if (!subjects || !timetables) return;
+    allSubjects = subjects;
+    allTimetables = timetables;
+  }
+
+  state.data.pendingConflictSubjects = allSubjects;
+  state.data.pendingConflictTimetables = allTimetables;
+
+  const stagedTimetables = cloneTimetableEditMap(allTimetables);
+  Object.values(state.data.pendingTimetableEdits || {}).forEach(edit => {
+    const gradeData = stagedTimetables[String(edit.grade)];
+    const dayData = gradeData?.timetable?.[edit.day];
+    const timetable = dayData?.[String(edit.classId)];
+    if (!Array.isArray(timetable)) return;
+
+    const item = timetable.find(row => Number(row.period) === Number(edit.period));
+    if (!item) return;
+
+    if (edit.action === "updateTimetableChange") {
+      item.subject_change = edit.subjectChange;
+    } else if (edit.action === "updateTimetableBase") {
+      item.subject_base = edit.subjectBase;
+    }
+  });
+
+  const subjectMap = new Map();
+  allSubjects.forEach(subject => {
+    const id = String(subject.subject_id || "").trim();
+    if (id) subjectMap.set(id, subject);
+  });
+
+  const conflictCells = {};
+  const conflictPairs = {};
+  const weekdays = ["月", "火", "水", "木", "金"];
+
+  const getEffectiveId = item => String(
+    item?.subject_change ||
+    item?.subject_base ||
+    item?.subject_id ||
+    ""
+  ).trim();
+
+  const hasOverlap = (idA, idB) => {
+    if (!idA || !idB) return [];
+    const subjectA = subjectMap.get(idA);
+    const subjectB = subjectMap.get(idB);
+    if (!subjectA || !subjectB) return [];
+
+    if (
+      idA === idB &&
+      Array.isArray(subjectA.subject_ids)
+    ) return [];
+
+    const infosA = getExpandedSubjectInfos(idA, subjectMap);
+    const infosB = getExpandedSubjectInfos(idB, subjectMap);
+    const types = [];
+
+    infosA.forEach(a => infosB.forEach(b => {
+      const teacherA = String(a.teacher_id || "").trim();
+      const teacherB = String(b.teacher_id || "").trim();
+      const placeA = String(a.place || "").trim();
+      const placeB = String(b.place || "").trim();
+
+      if (teacherA && teacherA === teacherB) types.push("teacher");
+      if (placeA && placeA === placeB) types.push("place");
+    }));
+
+    return [...new Set(types)];
+  };
+
+  weekdays.forEach(day => {
+    const periodEntries = new Map();
+
+    ["1", "2", "3"].forEach(grade => {
+      const dayData = stagedTimetables[grade]?.timetable?.[day] || {};
+      Object.keys(dayData).forEach(classId => {
+        const timetable = dayData[classId];
+        if (!Array.isArray(timetable)) return;
+
+        timetable.forEach(item => {
+          const period = Number(item.period);
+          const subjectId = getEffectiveId(item);
+          if (!subjectId) return;
+
+          if (!periodEntries.has(period)) periodEntries.set(period, []);
+          periodEntries.get(period).push({
+            grade,
+            classId: String(classId),
+            period,
+            subjectId
+          });
+        });
+      });
+    });
+
+    periodEntries.forEach((entries, period) => {
+      for (let i = 0; i < entries.length; i++) {
+        for (let j = i + 1; j < entries.length; j++) {
+          const a = entries[i];
+          const b = entries[j];
+          if (a.classId === b.classId) continue;
+
+          const types = hasOverlap(a.subjectId, b.subjectId);
+          if (!types.length) continue;
+
+          const keyA = `${day}|${period}|${a.classId}`;
+          const keyB = `${day}|${period}|${b.classId}`;
+          conflictCells[keyA] = true;
+          conflictCells[keyB] = true;
+          const pair = [a.classId, b.classId].sort((x, y) => Number(x) - Number(y));
+          conflictPairs[`${day}|${period}|${pair[0]}|${pair[1]}`] = types;
+        }
+      }
+    });
+  });
+
+  const previous = state.data.pendingConflictCells || {};
+  state.data.pendingConflictCells = conflictCells;
+  state.data.pendingConflictPairs = conflictPairs;
+
+  const editedCellKeys = Object.values(state.data.pendingTimetableEdits || {})
+    .map(edit => `${edit.day}|${edit.period}|${edit.classId}`);
+  const newlyConflictingEditedCell = editedCellKeys.some(key =>
+    conflictCells[key] && !previous[key]
+  );
+  if (newlyConflictingEditedCell) {
+    showToast(
+      "編集中の時間割に担当教員または場所の重複があります。該当セルを赤く表示しています。",
+      5000,
+      "error"
+    );
+  }
+}
+
+function stageTimetableEdit({
+  action,
+  classItem,
+  day,
+  period,
+  originalValue,
+  newValue
+}) {
+  const normalizedNewValue = String(newValue ?? "").trim();
+  const normalizedOriginalValue = String(originalValue ?? "").trim();
+  const key = getTimetableEditKey(
+    action,
+    classItem.id,
+    day,
+    period,
+    classItem.grade
+  );
+
+  if (!state.data.pendingEditUndoStack.length) {
+    state.data.pendingEditUndoStack.push(
+      cloneTimetableEditMap(state.data.pendingTimetableEdits || {})
+    );
+  }
+
+  if (normalizedNewValue === normalizedOriginalValue) {
+    delete state.data.pendingTimetableEdits[key];
+  } else {
+    state.data.pendingTimetableEdits[key] = {
+      key,
+      action,
+      classId: String(classItem.id),
+      grade: String(classItem.grade),
+      classNo: String(classItem.classNo || ""),
+      course: String(classItem.course || ""),
+      classLabel: String(classItem.label || `${classItem.grade}年${classItem.classNo}組`),
+      day,
+      period: Number(period),
+      originalValue: normalizedOriginalValue,
+      newValue: normalizedNewValue,
+      ...(action === "updateTimetableChange"
+        ? { subjectChange: normalizedNewValue, teacherChange: "" }
+        : { subjectBase: normalizedNewValue })
+    };
+  }
+
+  state.data.pendingEditUndoStack.push(
+    cloneTimetableEditMap(state.data.pendingTimetableEdits || {})
+  );
+  if (state.data.pendingEditUndoStack.length > 100) {
+    state.data.pendingEditUndoStack.shift();
+  }
+  state.data.pendingEditRedoStack = [];
+
+  updateBatchEditToolbar();
+  updatePendingConflictState().then(() => {
+    refreshBatchEditScreen();
+  }).catch(error => {
+    console.error("編集中の重複判定に失敗:", error);
+  });
+  refreshBatchEditScreen();
+}
+
+async function restorePendingEditSnapshot(snapshot) {
+  state.data.pendingTimetableEdits = cloneTimetableEditMap(snapshot || {});
+  await updatePendingConflictState();
+  refreshBatchEditScreen();
+}
+
+async function undoPendingTimetableEdit() {
+  const stack = state.data.pendingEditUndoStack;
+  if (stack.length <= 1) return;
+
+  const current = stack.pop();
+  state.data.pendingEditRedoStack.push(current);
+  const previous = stack[stack.length - 1] || {};
+  await restorePendingEditSnapshot(previous);
+  showToast("直前の編集を元に戻しました。");
+}
+
+async function redoPendingTimetableEdit() {
+  const stack = state.data.pendingEditRedoStack;
+  if (!stack.length) return;
+
+  const next = stack.pop();
+  state.data.pendingEditUndoStack.push(cloneTimetableEditMap(next));
+  await restorePendingEditSnapshot(next);
+  showToast("編集をやり直しました。");
+}
+
+async function discardPendingTimetableEdits(action) {
+  const current = state.data.pendingTimetableEdits || {};
+  const count = getPendingEditCount(action);
+  if (!count) return;
+
+  const kept = {};
+  Object.entries(current).forEach(([key, edit]) => {
+    if (edit.action !== action) kept[key] = edit;
+  });
+
+  if (!state.data.pendingEditUndoStack.length) {
+    state.data.pendingEditUndoStack.push(
+      cloneTimetableEditMap(current)
+    );
+  }
+  state.data.pendingTimetableEdits = kept;
+  state.data.pendingEditUndoStack.push(cloneTimetableEditMap(kept));
+  state.data.pendingEditRedoStack = [];
+  state.data.pendingConflictToastKeys = {};
+  await updatePendingConflictState();
+  refreshBatchEditScreen();
+  showToast(`${count}件の未保存変更を破棄しました。`);
+}
+
+function getCurrentCellSubject(data, day, classId, period, field) {
+  const item = data?.timetable?.[day]?.[String(classId)]?.find(
+    row => Number(row.period) === Number(period)
+  );
+  return String(item?.[field] || "");
+}
+
+async function editChange(classItem, period, existingChange) {
+  const [allSubjects, allTimetables] = await Promise.all([
     fetchAllGasSubjects(),
     fetchAllAdminTimetables()
   ]);
-  
+
   if (!allSubjects) {
-    showToast(
-      "科目一覧を取得できませんでした。\n" +
-      "時間割データを確認してください。"
-    );
+    showToast("科目一覧を取得できませんでした。\n時間割データを確認してください。");
     return;
   }
-
-  // ========================================
-  // 科目を検索・選択
-  // ========================================
-  const day =
-    state.adminDay || "月";
-
-
   if (!allTimetables) {
-    showToast(
-      "重複判定用の時間割を取得できませんでした。\n" +
-      "時間割データを確認してください。"
-    );
+    showToast("重複判定用の時間割を取得できませんでした。\n時間割データを確認してください。");
     return;
   }
 
-  const subjectChange =
-    await showSubjectSelectionDialog(
-      allSubjects,
-      current,
-      `${day}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`,
-      {
-        classId: classItem.id,
-        day,
-        period,
-        allTimetables,
-        grade: classItem.grade,
-        classNo: classItem.classNo
-      }
-    );
+  const day = state.adminDay || "月";
+  const gradeData = allTimetables[String(classItem.grade)];
+  const currentBase = getCurrentCellSubject(gradeData, day, classItem.id, period, "subject_base");
+  const currentServerValue = getCurrentCellSubject(gradeData, day, classItem.id, period, "subject_change");
+  const pending = getPendingTimetableEdit(
+    "updateTimetableChange", classItem.id, day, period, classItem.grade
+  );
+  const currentValue = pending
+    ? pending.subjectChange
+    : (currentServerValue || existingChange?.subject_change || existingChange?.subject || "");
 
-  if (subjectChange === null) {
-    return;
-  }
+  const stagedTimetables = cloneTimetableEditMap(allTimetables);
+  Object.values(state.data.pendingTimetableEdits || {}).forEach(edit => {
+    const rows = stagedTimetables[String(edit.grade)]?.timetable?.[edit.day]?.[String(edit.classId)];
+    const item = Array.isArray(rows)
+      ? rows.find(row => Number(row.period) === Number(edit.period))
+      : null;
+    if (!item) return;
+    if (edit.action === "updateTimetableChange") item.subject_change = edit.subjectChange;
+    if (edit.action === "updateTimetableBase") item.subject_base = edit.subjectBase;
+  });
 
-  // ========================================
-  // 保存直前のsubject_id存在チェック
-  // ※空欄は「変更をクリア」なので許可
-  // ========================================
-  if (subjectChange !== "") {
-
-    const validSubject =
-      allSubjects.some(
-        (subject) =>
-          String(subject.subject_id).trim() ===
-          subjectChange
-      );
-
-    if (!validSubject) {
-      showToast(
-        `存在しないsubject_idです。\n\n${subjectChange}`
-      );
-      return;
+  const subjectChange = await showSubjectSelectionDialog(
+    allSubjects,
+    currentValue,
+    `${day}曜日　${classItem.grade}年${classItem.classNo}組 ${state.data.courses[classItem.course] || ""}　${period}限目`,
+    {
+      classId: classItem.id,
+      day,
+      period,
+      allTimetables: stagedTimetables,
+      grade: classItem.grade,
+      classNo: classItem.classNo
     }
+  );
+
+  if (subjectChange === null) return;
+
+  if (subjectChange !== "" && !allSubjects.some(subject =>
+    String(subject.subject_id).trim() === String(subjectChange).trim()
+  )) {
+    showToast(`存在しないsubject_idです。\n\n${subjectChange}`);
+    return;
   }
 
-  // 現在のログインセッションを取得
+  stageTimetableEdit({
+    action: "updateTimetableChange",
+    classItem,
+    day,
+    period,
+    originalValue: currentServerValue,
+    newValue: subjectChange
+  });
+  if (subjectChange === "" && !currentBase) {
+    showToast("このセルの変更科目を空欄にしました。保存すると基本時間割に戻ります。");
+  }
+}
+
+async function editBaseSubject(classItem, period, currentSubject) {
+  const [allSubjects, allTimetables] = await Promise.all([
+    fetchAllGasSubjects(),
+    fetchAllAdminTimetables()
+  ]);
+
+  if (!allSubjects) {
+    showToast("科目一覧を取得できませんでした。\n時間割データを確認してください。");
+    return;
+  }
+  if (!allTimetables) {
+    showToast("重複判定用の時間割を取得できませんでした。\n時間割データを確認してください。");
+    return;
+  }
+
+  const day = state.deepAdminDay || state.adminDay || "月";
+  const gradeData = allTimetables[String(classItem.grade)];
+  const currentServerValue = getCurrentCellSubject(
+    gradeData, day, classItem.id, period, "subject_base"
+  );
+  const pending = getPendingTimetableEdit(
+    "updateTimetableBase", classItem.id, day, period, classItem.grade
+  );
+  const currentValue = pending ? pending.subjectBase : currentServerValue;
+
+  const stagedTimetables = cloneTimetableEditMap(allTimetables);
+  Object.values(state.data.pendingTimetableEdits || {}).forEach(edit => {
+    const rows = stagedTimetables[String(edit.grade)]?.timetable?.[edit.day]?.[String(edit.classId)];
+    const item = Array.isArray(rows)
+      ? rows.find(row => Number(row.period) === Number(edit.period))
+      : null;
+    if (!item) return;
+    if (edit.action === "updateTimetableChange") item.subject_change = edit.subjectChange;
+    if (edit.action === "updateTimetableBase") item.subject_base = edit.subjectBase;
+  });
+
+  const subjectId = await showSubjectSelectionDialog(
+    allSubjects,
+    currentValue || currentSubject || "",
+    `${classItem.label}　${state.data.courses[classItem.course] || ""}　${period}限目（基本時間割）`,
+    {
+      classId: classItem.id,
+      day,
+      period,
+      allTimetables: stagedTimetables,
+      grade: classItem.grade,
+      classNo: classItem.classNo
+    }
+  );
+
+  if (subjectId === null) return;
+
+  if (subjectId !== "" && !allSubjects.some(subject =>
+    String(subject.subject_id).trim() === String(subjectId).trim()
+  )) {
+    showToast(`存在しないsubject_idです。\n\n${subjectId}`);
+    return;
+  }
+
+  stageTimetableEdit({
+    action: "updateTimetableBase",
+    classItem,
+    day,
+    period,
+    originalValue: currentServerValue,
+    newValue: subjectId
+  });
+}
+
+function getTokyoDateString() {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date()).replaceAll("/", "-");
+}
+
+async function savePendingTimetableEdits(action) {
+  const edits = Object.values(state.data.pendingTimetableEdits || {})
+    .filter(edit => edit.action === action);
+
+  if (!edits.length) {
+    showToast("保存する変更はありません。");
+    return;
+  }
+
   const {
     data: { session },
     error: sessionError
   } = await window.supabaseClient.auth.getSession();
 
-  if (sessionError) {
-    console.error("認証状態の取得に失敗:", sessionError);
-    showToast("ログイン状態の確認に失敗しました。");
+  if (sessionError || !session?.access_token) {
+    showToast("ログイン状態を確認できません。再ログインしてください。", 5000, "error");
     return;
   }
 
-  if (!session) {
-    showToast("ログインしてください。");
-    return;
-  }
-
-  // 変更した日付を日本時間で取得
-  const now = new Date();
-
-  const changeDate =
-    new Intl.DateTimeFormat(
-      "ja-JP",
-      {
-        timeZone: "Asia/Tokyo",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
+  const changes = edits.map(edit => action === "updateTimetableChange"
+    ? {
+        classId: edit.classId,
+        grade: edit.grade,
+        day: edit.day,
+        period: edit.period,
+        subjectChange: edit.subjectChange,
+        teacherChange: edit.teacherChange || ""
       }
-    )
-      .format(now)
-      .replaceAll("/", "-");
-    
+    : {
+        classId: edit.classId,
+        grade: edit.grade,
+        day: edit.day,
+        period: edit.period,
+        subjectBase: edit.subjectBase
+      });
+
+  const saveButton = document.querySelector(
+    `.batch-edit-toolbar[data-mode="${action === "updateTimetableChange" ? "quick" : "deep"}"] .batch-edit-save`
+  );
+  if (saveButton) {
+    saveButton.disabled = true;
+    saveButton.textContent = "保存中…";
+  }
+
   try {
     const response = await fetch("/api/timetable-change", {
       method: "POST",
@@ -3737,343 +4296,114 @@ async function editChange(classItem, period, existingChange) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${session.access_token}`
       },
-      body: JSON.stringify({
-        action: "updateTimetableChange",
-        classId: classItem.id,
-        grade: classItem.grade,
-        day,
-        period,
-        subjectChange,
-        teacherChange: ""
-      })
+      body: JSON.stringify({ action, changes })
     });
 
     const result = await response.json();
-
-    console.log("時間割変更結果:", result);
-
     if (!response.ok || !result.success) {
-      throw new Error(
-        result.error || "時間割変更に失敗しました"
-      );
+      throw new Error(result.error || "時間割の一括保存に失敗しました。");
     }
 
-    // ブラウザ側のGASキャッシュを削除
-    delete state.data.gasAdminTimetableCache[
-      String(classItem.grade)
-    ];
-   
-    // ========================================
-    // 重複結果を確認
-    // ========================================
+    const savedKeys = new Set(edits.map(edit => edit.key));
+    const remaining = {};
+    Object.entries(state.data.pendingTimetableEdits || {}).forEach(([key, edit]) => {
+      if (!savedKeys.has(key)) remaining[key] = edit;
+    });
+    state.data.pendingTimetableEdits = remaining;
+    state.data.pendingEditUndoStack = [cloneTimetableEditMap(remaining)];
+    state.data.pendingEditRedoStack = [];
 
-    let message =
-      `${day}曜日 ${period}限を「${subjectChange}」に変更しました。`;
+    edits.forEach(edit => {
+      delete state.data.gasAdminTimetableCache[String(edit.grade)];
+    });
 
-    if (
-      result.conflicts &&
-      result.conflicts.length > 0
-    ) {
-      message +=
-        "\n\n⚠ 重複が見つかりました。";
-
-      const teacherConflicts =
-        result.conflicts.filter(
-          conflict =>
-            conflict.type === "teacher"
+    const results = Array.isArray(result.results) ? result.results : [];
+    if (action === "updateTimetableChange") {
+      for (let i = 0; i < edits.length; i++) {
+        const edit = edits[i];
+        const itemResult = results[i] || {};
+        saveAdminConflicts(
+          edit.grade,
+          edit.day,
+          edit.classId,
+          edit.period,
+          itemResult.conflicts || []
         );
-
-      const placeConflicts =
-        result.conflicts.filter(
-          conflict =>
-            conflict.type === "place"
-        );
-
-      if (teacherConflicts.length > 0) {
-        message +=
-          "\n\n【担当教員の重複】";
-
-        teacherConflicts.forEach(
-          conflict => {
-            message +=
-              `\n・${conflict.teacher_id}` +
-              ` → class_id ${conflict.class_id}` +
-              `（${conflict.subject_id}）`;
-          }
-        );
-      }
-
-      if (placeConflicts.length > 0) {
-        message +=
-          "\n\n【担当場所の重複】";
-
-        placeConflicts.forEach(
-          conflict => {
-            message +=
-              `\n・${conflict.place}` +
-              ` → class_id ${conflict.class_id}` +
-              `（${conflict.subject_id}）`;
-          }
-        );
-      }
-
-      message +=
-        "\n\n重複していますが、時間割は変更されています。";
-    }
-    showToast(message);
-
-    // ========================================
-    // 重複セル情報をブラウザ側へ更新
-    // 重複が0件でも必ず呼ぶ
-    // ========================================
-    saveAdminConflicts(
-      classItem.grade,
-      day,
-      classItem.id,
-      period,
-      result.conflicts || []
-    );
-    
-    // ========================================
-    // 変更履歴をSupabaseへ保存
-    // ========================================
-    try {
-      await addChangeHistory(
-        classItem,
-        period,
-        subjectChange,
-        changeDate
-      );
-    } catch (historyError) {
-      console.error(
-        "変更履歴の保存に失敗:",
-        historyError
-      );
-
-      showToast(
-        "時間割は変更されましたが、" +
-        "変更履歴の保存に失敗しました。\n\n" +
-        historyError.message
-      );
-    }
-    // 最新データをGASから再取得
-    await renderQuickAdmin();
-
-    // 学生画面側も最新状態にする
-    await renderStudent();
-
-  } catch (error) {
-    console.error(
-      "時間割変更エラー:",
-      error
-    );
-
-    showToast(
-      "時間割の変更に失敗しました。",
-      5000,
-      "error"
-    );      
-  }
-}
-
-async function editBaseSubject(classItem, period, currentSubject) {
-  // ========================================
-  // 全学年の科目一覧を取得
-  // ========================================
-  const [
-    allSubjects,
-    allTimetables
-  ] = await Promise.all([
-    fetchAllGasSubjects(),
-    fetchAllAdminTimetables()
-  ]);
-
-  if (!allSubjects) {
-    showToast(
-      "科目一覧を取得できませんでした。\n" +
-      "時間割データを確認してください。"
-    );
-    return;
-  }
-
-    // ========================================
-    // 科目を検索・選択
-    // ========================================
-    const day =
-      state.deepAdminDay ||
-      state.adminDay ||
-      "月";
-
-    if (!allTimetables) {
-      showToast(
-        "重複判定用の時間割を取得できませんでした。\n" +
-        "時間割データを確認してください。"
-      );
-      return;
-    }
-
-    const subjectId =
-      await showSubjectSelectionDialog(
-        allSubjects,
-        currentSubject,
-        `${classItem.label}　${state.data.courses[classItem.course] || ""}　${period}限目`,
-        {
-          classId: classItem.id,
-          day,
-          period,
-          allTimetables
+        try {
+          await addChangeHistory({
+            id: edit.classId,
+            grade: edit.grade,
+            classNo: edit.classNo,
+            course: edit.course,
+            label: edit.classLabel
+          }, edit.period, edit.subjectChange, getTokyoDateString());
+        } catch (historyError) {
+          console.error("変更履歴の保存に失敗:", historyError);
+          showToast("時間割は保存されましたが、変更履歴の保存に失敗しました。", 5000, "error");
         }
-      );
-    
-  // キャンセル
-  if (subjectId === null) {
-    return;
-  }
-
-  // ========================================
-  // subject_idの存在チェック
-  // 空欄は「基本時間割を空欄にする」ため許可
-  // ========================================
-  if (subjectId !== "") {
-    const validSubject =
-      allSubjects.some(
-        (subject) =>
-          String(subject.subject_id).trim() ===
-          String(subjectId).trim()
-      );
-
-    if (!validSubject) {
-      showToast(
-        `存在しないsubject_idです。\n\n${subjectId}`
-      );
-      return;
+      }
     }
-  }
 
-  // ========================================
-  // ログイン状態を確認
-  // ========================================
-  const {
-    data: { session },
-    error: sessionError
-  } = await window.supabaseClient.auth.getSession();
+    state.data.pendingConflictCells = {};
+    state.data.pendingConflictPairs = {};
+    state.data.pendingConflictTimetables = null;
+    await updatePendingConflictState();
 
-  if (sessionError) {
-    console.error(
-      "認証状態の取得に失敗:",
-      sessionError
-    );
-
-    showToast(
-      "ログイン状態の確認に失敗しました。",
-      5000,
-      "error"
-    );
-
-    return;
-  }
-
-  if (!session) {
-    showToast("ログインしてください。");
-    return;
-  }
-
-  try {
-    // ========================================
-    // Cloudflare Pages Function経由で保存
-    // ========================================
-    const response =
-      await fetch("/api/timetable-change", {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization":
-            `Bearer ${session.access_token}`
-        },
-
-        body: JSON.stringify({
-          action: "updateTimetableBase",
-
-          classId: classItem.id,
-          grade: classItem.grade,
-          day,
-          period,
-
-          subjectBase: subjectId,
-
-          // 今回は基本時間割だけ変更
-          teacherChange: ""
-        })
+    const conflictRows = [];
+    results.forEach((itemResult, index) => {
+      (itemResult.conflicts || []).forEach(conflict => {
+        conflictRows.push({
+          ...conflict,
+          editedClassId: edits[index]?.classId,
+          editedDay: edits[index]?.day,
+          editedPeriod: edits[index]?.period
+        });
       });
+    });
 
-    const result =
-      await response.json();
+    if (conflictRows.length) {
+      const teacherConflicts = conflictRows.filter(item => item.type === "teacher");
+      const placeConflicts = conflictRows.filter(item => item.type === "place");
+      let message = `${edits.length}件の変更を保存しました。\n\n⚠ 重複が見つかりました。`;
 
-    console.log(
-      "基本時間割変更結果:",
-      result
-    );
-
-    if (
-      !response.ok ||
-      !result.success
-    ) {
-      throw new Error(
-        result.error ||
-        "基本時間割の変更に失敗しました"
-      );
+      if (teacherConflicts.length) {
+        message += "\n\n【担当教員の重複】";
+        teacherConflicts.forEach(item => {
+          message += `\n・${item.teacher_id || "担当教員"} → class_id ${item.class_id}（${item.subject_id || ""}）`;
+        });
+      }
+      if (placeConflicts.length) {
+        message += "\n\n【担当場所の重複】";
+        placeConflicts.forEach(item => {
+          message += `\n・${item.place || "場所"} → class_id ${item.class_id}（${item.subject_id || ""}）`;
+        });
+      }
+      message += "\n\n重複していますが、変更は保存されています。";
+      showToast(message, 6000, "error");
+    } else {
+      showToast(`${edits.length}件の変更をまとめて保存しました。`);
     }
 
-    // ========================================
-    // 重複セル情報をブラウザ側へ保存
-    // ========================================
-    saveAdminConflicts(
-      classItem.grade,
-      day,
-      classItem.id,
-      period,
-      result.conflicts || []
-    );
-      
-    // ========================================
-    // ブラウザ側のGASキャッシュを削除
-    // ========================================
-    delete state.data.gasAdminTimetableCache[
-      String(classItem.grade)
-    ];
-
-    // ========================================
-    // 完了
-    // ========================================
-    showToast(
-      `${day}曜日 ${period}限の基本時間割を` +
-      `「${subjectId || "空欄"}」に変更しました。`
-    );
-
-    // ========================================
-    // 最新データをGASから再取得
-    // ========================================
-    await renderDeepAdmin();
-
-    // 学生画面も更新
+    if (state.view === "quick-admin") {
+      await renderQuickAdmin();
+    } else if (state.view === "deep-admin") {
+      await renderDeepAdmin();
+    }
     await renderStudent();
-
   } catch (error) {
-    console.error(
-      "基本時間割変更エラー:",
-      error
-    );
-
+    console.error("時間割の一括保存エラー:", error);
     showToast(
-      "基本時間割の変更に失敗しました。\n\n" +
-      error.message,
-      5000,
+      `一括保存に失敗しました。未保存の編集内容は保持されています。\n${error.message}`,
+      6000,
       "error"
-    );  
+    );
+  } finally {
+    if (saveButton) {
+      saveButton.textContent = "まとめて保存";
+      updateBatchEditToolbar();
+    }
   }
 }
-
 
 async function requestNotificationApi(action, payload = {}) {
   const {
