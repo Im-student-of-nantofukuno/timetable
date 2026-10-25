@@ -4149,10 +4149,10 @@ async function handlePostSubmit(event) {
      targets: {
        grades: getCheckedValues(form, "target-grade"),
        classes: getCheckedValues(form, "target-class"),
--      courses: getCheckedValues(form, "target-course").map(
--        (course) => courseNameMap[course] || course
--      )
-+      courses: getCheckedValues(form, "target-course")
+      courses: getCheckedValues(form, "target-course").map(
+        (course) => courseNameMap[course] || course
+      )
+      courses: getCheckedValues(form, "target-course")
      }
    };
 
