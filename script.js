@@ -3165,17 +3165,23 @@ function appendMatrixHeader(matrix, classes) {
 
   classes.forEach((classItem) => {
     const courseLabel =
-      state.data.courses[classItem.course] || "";
+      classItem.courseLabel ||
+      state.data.courses[classItem.course] ||
+      "";
+
 
     const label =
-      `${escapeHtml(classItem.label)}<br>` +
-      `${escapeHtml(courseLabel)}`;
+      `<span class="matrix-header-class-label">${escapeHtml(classItem.label)}</span>` +
+      (courseLabel
+        ? `<span class="matrix-header-course-label">${escapeHtml(courseLabel)}</span>`
+        : "");
+
 
     const cell =
       createCell(
         label,
         "div",
-        `matrix-cell ${getSubjectClass(classItem.course)}`,
+        `matrix-cell matrix-cell--class-header ${getSubjectClass(classItem.course)}`,
         true
       );
 
@@ -6452,10 +6458,13 @@ async function showSubjectSelectionDialog(
               conflictContext?.allTimetables
             );
         
-          const displayName =
-            hLabel
-              ? `${subjectName}_${hLabel}`
-              : subjectName;
+          const courseLabel = getCourseLabelFromSubjectId(
+            subjectId,
+            conflictContext?.allTimetables
+          );
+          const displayName = hLabel
+            ? `${subjectName}_${hLabel}${courseLabel ? `（${courseLabel}）` : ""}`
+            : `${subjectName}${courseLabel ? `（${courseLabel}）` : ""}`;
         
           if (!keyword) {
             return true;
@@ -6514,10 +6523,17 @@ async function showSubjectSelectionDialog(
             subjectId,
             conflictContext?.allTimetables
           );
-      
+        
+        const courseLabel = getCourseLabelFromSubjectId(
+          subjectId,
+          conflictContext?.allTimetables
+        );
+
         if (hLabel) {
           displayName =
-            `${subjectName}_${hLabel}`;
+             `${subjectName}_${hLabel}${courseLabel ? `（${courseLabel}）` : ""}`;
+        } else if (courseLabel) {
+          displayName = `${subjectName}（${courseLabel}）`;
         }
 
         const button =
@@ -6683,6 +6699,8 @@ function convertGasClassForDisplay(gasClass) {
     grade: String(gasClass.grade),
     classNo: String(gasClass.class_no),
     course,
+    // GASが返すコース名（文系・理系・探文など）を表示用に保持する。
+    courseLabel: String(gasClass.course || "").trim(),
     label:
       `${gasClass.grade}${gasClass.class_no}H`
   };
@@ -6735,6 +6753,49 @@ function getHLabelFromSubjectId(subjectId, allTimetables) {
   }
 
   // class_idが見つからなかった場合
+  return "";
+}
+
+// subject_idに対応するクラスのコース名を取得する。
+// 例：同じ「21H」でも、文系・理系の科目を区別して表示する。
+function getCourseLabelFromSubjectId(subjectId, allTimetables) {
+  const id = String(subjectId || "").trim();
+
+  // joint科目には特定クラスのコース名を付けない。
+  if (/^j[A-Z]{2}\d{3}$/.test(id)) {
+    return "";
+  }
+
+  const match = id.match(/^[A-Z]{2}(\d{2})\d$/);
+  if (!match) {
+    return "";
+  }
+
+  const classId = match[1];
+  for (const grade of ["1", "2", "3"]) {
+    const classes = allTimetables?.[grade]?.classes || [];
+    const gasClass = classes.find(
+      (item) => String(item.class_id) === classId
+    );
+
+    if (gasClass) {
+      const course = String(gasClass.course || "").trim();
+      const labels = {
+        "文": "文系",
+        "文系": "文系",
+        "理": "理系",
+        "理系": "理系",
+        "探文": "探文",
+        "探理": "探理",
+        "農": "農",
+        "農業": "農",
+        "福": "福",
+        "福祉": "福"
+      };
+      return labels[course] || course;
+    }
+  }
+
   return "";
 }
 
