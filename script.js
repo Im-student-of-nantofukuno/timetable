@@ -7399,6 +7399,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeButtons = Array.from(document.querySelectorAll("[data-command-close]"));
 
   if (!modal || !editor || compactInputs.length === 0) return;
+  installTimetableCommandFeatures();
 
   let lastFocusedElement = null;
   let activeCompactInput = compactInputs[0];
@@ -7407,6 +7408,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const focused = compactInputs.find((input) => input === document.activeElement);
     if (focused) activeCompactInput = focused;
     editor.value = activeCompactInput?.value || compactInputs[0].value || "";
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
   };
 
   const syncEditorToCompact = () => {
