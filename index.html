@@ -242,6 +242,11 @@
                 <option value="金">金</option>
               </select>
             </label>
+            <div class="command-entry" data-command-entry>
+              <label class="command-entry__label" for="quick-command-input">時間割コマンド</label>
+              <textarea id="quick-command-input" class="command-entry__input" data-command-input rows="2" spellcheck="false" placeholder="例: 21tb 1 to 4 = jSP101" aria-label="時間割コマンド入力"></textarea>
+              <button type="button" class="command-expand-button" data-command-expand aria-label="コマンドエディタを展開" title="エディタを展開">↗</button>
+            </div>
           </header>
 
           <section class="admin-layout">
@@ -339,7 +344,11 @@
               </select>
             </label>
 
-            <h1 id="deep-admin-heading">深い編集画面</h1>
+            <div class="command-entry" data-command-entry>
+              <label class="command-entry__label" for="deep-command-input">時間割コマンド</label>
+              <textarea id="deep-command-input" class="command-entry__input" data-command-input rows="2" spellcheck="false" placeholder="例: 21tb 1 to 4 = jSP101" aria-label="時間割コマンド入力"></textarea>
+              <button type="button" class="command-expand-button" data-command-expand aria-label="コマンドエディタを展開" title="エディタを展開">↗</button>
+            </div>
           </header>
 
           <section class="admin-layout">
@@ -367,6 +376,24 @@
           </section>
         </section>
       </main>
+    </div>
+    <div class="command-editor-modal" id="command-editor-modal" hidden aria-hidden="true">
+      <div class="command-editor-modal__backdrop" data-command-close></div>
+      <section class="command-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="command-editor-title">
+        <header class="command-editor-dialog__header">
+          <div>
+            <h2 id="command-editor-title">時間割コマンドエディタ</h2>
+            <p>複数の命令を入力できます。入力内容は閉じても保持されます。</p>
+          </div>
+          <button type="button" class="command-editor-close" data-command-close aria-label="エディタを閉じる">×</button>
+        </header>
+        <label class="visually-hidden" for="command-editor-textarea">時間割コマンドを複数行で入力</label>
+        <textarea id="command-editor-textarea" class="command-editor-textarea" spellcheck="false" placeholder="21tb 1 to 4 = jSP101&#10;24ri 1 = jTE101" aria-describedby="command-editor-help"></textarea>
+        <p id="command-editor-help" class="command-editor-help">現段階では入力欄とモーダルのUIのみです。コマンドの検証・プレビュー・反映機能は次の実装段階で追加します。</p>
+        <footer class="command-editor-dialog__footer">
+          <button type="button" class="command-editor-secondary" data-command-close>閉じる</button>
+        </footer>
+      </section>
     </div>
   </body>
 </html>
