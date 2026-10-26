@@ -1648,3 +1648,226 @@ button.matrix-cell:hover {
     width: 100%;
   }
 }
+
+/* 時間割コマンド入力欄（UI段階） */
+.admin-header,
+.deep-admin-header {
+  width: min(100%, 1180px);
+  box-sizing: border-box;
+}
+
+.admin-header .command-entry,
+.deep-admin-header .command-entry {
+  position: relative;
+  display: flex;
+  flex: 1 1 250px;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 220px;
+  min-height: 84px;
+  padding: 7px 9px 22px;
+  border-radius: var(--radius-md);
+  background: var(--field-bg);
+  color: #171717;
+  box-sizing: border-box;
+}
+
+.command-entry__label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.command-entry__input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  max-height: 48px;
+  padding: 3px 5px;
+  border: 1px solid rgba(60, 60, 60, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #171717;
+  font: 500 0.9rem/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.command-entry__input:focus,
+.command-editor-textarea:focus {
+  outline: 2px solid #6598d0;
+  outline-offset: 1px;
+}
+
+.command-expand-button {
+  position: absolute;
+  left: 8px;
+  bottom: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #505050;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.command-expand-button:hover,
+.command-expand-button:focus-visible {
+  background: rgba(0, 0, 0, 0.09);
+  outline-offset: 1px;
+}
+
+.command-editor-modal[hidden] {
+  display: none !important;
+}
+
+.command-editor-modal {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 3vw, 40px);
+  box-sizing: border-box;
+}
+
+.command-editor-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 24, 30, 0.58);
+  backdrop-filter: blur(2px);
+}
+
+.command-editor-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 1100px);
+  height: min(86vh, 820px);
+  min-height: 360px;
+  padding: clamp(16px, 2.5vw, 28px);
+  border-radius: 18px;
+  background: var(--field-bg, #fff);
+  color: #171717;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
+}
+
+.command-editor-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.command-editor-dialog__header h2 {
+  margin: 0 0 6px;
+  font-size: clamp(1.25rem, 2vw, 1.8rem);
+}
+
+.command-editor-dialog__header p,
+.command-editor-help {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.command-editor-close {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: #ececec;
+  color: #222;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.command-editor-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 120px;
+  padding: 16px;
+  border: 1px solid #d2d6dc;
+  border-radius: 10px;
+  background: #fbfcfe;
+  color: #171717;
+  font: 500 1rem/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  tab-size: 2;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.command-editor-help {
+  margin-top: 10px;
+  font-size: 0.8rem;
+}
+
+command-editor-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.command-editor-secondary {
+  min-height: 42px;
+  padding: 8px 18px;
+  border: 1px solid #c9cdd3;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+}
+
+body.command-editor-open {
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .admin-header,
+  .deep-admin-header {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admin-header .profile-chip,
+  .deep-admin-header .profile-chip {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+
+  .admin-header .command-entry,
+  .deep-admin-header .command-entry {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .command-editor-modal {
+    padding: 0;
+  }
+
+  .command-editor-dialog {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+    padding: 16px;
+  }
+}
