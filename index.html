@@ -389,8 +389,14 @@
         </header>
         <label class="visually-hidden" for="command-editor-textarea">時間割コマンドを複数行で入力</label>
         <textarea id="command-editor-textarea" class="command-editor-textarea" spellcheck="false" placeholder="21tb 1 to 4 = jSP101&#10;24ri 1 = jTE101" aria-describedby="command-editor-help"></textarea>
+
         <p id="command-editor-help" class="command-editor-help">現段階では入力欄とモーダルのUIのみです。コマンドの検証・プレビュー・反映機能は次の実装段階で追加します。</p>
+        <div id="command-editor-status" class="command-editor-status" role="status" aria-live="polite">例：21tb 1 to 4 = jSP101</div>
+        <section id="command-editor-preview" class="command-editor-preview" hidden aria-live="polite"></section>
         <footer class="command-editor-dialog__footer">
+          <button type="button" class="command-editor-secondary" id="command-validate-button">入力を検証</button>
+          <button type="button" class="command-editor-secondary" id="command-preview-button">変更をプレビュー</button>
+          <button type="button" class="command-editor-primary" id="command-apply-button" disabled>変更を反映</button>
           <button type="button" class="command-editor-secondary" data-command-close>閉じる</button>
         </footer>
       </section>
