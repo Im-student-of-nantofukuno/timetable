@@ -4344,18 +4344,13 @@ async function savePendingTimetableEdits(action) {
           edit.period,
           itemResult.conflicts || []
         );
-        try {
-          await addChangeHistory({
-            id: edit.classId,
-            grade: edit.grade,
-            classNo: edit.classNo,
-            course: edit.course,
-            label: edit.classLabel
-          }, edit.period, edit.subjectChange, getTokyoDateString());
-        } catch (historyError) {
-          console.error("変更履歴の保存に失敗:", historyError);
-          showToast("時間割は保存されましたが、変更履歴の保存に失敗しました。", 5000, "error");
-        }
+      }
+
+      try {
+        await addBatchChangeHistory(edits, session.user.id);
+      } catch (historyError) {
+        console.error("変更履歴の保存に失敗:", historyError);
+        showToast("時間割は保存されましたが、変更履歴の保存に失敗しました。", 5000, "error");
       }
     }
 
@@ -4755,94 +4750,45 @@ function applyClassCourseOverrides(classes) {
   }));
 }
 
-async function addChangeHistory(
-  classItem,
-  period,
-  subject,
-  changeDate
-) {
-  const startDate = new Date(
-    `${changeDate}T00:00:00+09:00`
-  );
+async function addBatchChangeHistory(edits, userId) {
+  const now = new Date();
+  const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const formatJstDateTime = (date) =>
+    new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).format(date);
 
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + 7);
-
-  const formatJstDateTime = (date) => {
-    const parts =
-      new Intl.DateTimeFormat(
-        "ja-JP",
-        {
-          timeZone: "Asia/Tokyo",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false
-        }
-      ).formatToParts(date);
-
-    const get = (type) =>
-      parts.find(
-        part => part.type === type
-      )?.value;
-
-    return (
-      `${get("year")}-${get("month")}-${get("day")}` +
-      `T${get("hour")}:${get("minute")}:${get("second")}+09:00`
-    );
-  };
+  const changesText = edits.map((edit) => {
+    const before = edit.originalValue || "空欄";
+    const after = edit.subjectChange || "空欄";
+    return `${edit.classLabel}・${edit.day}曜日・${edit.period}限: 「${before}」→「${after}」`;
+  }).join(" / ");
 
   const history = {
-    id: `history-${Date.now()}`,
+    id: `history-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: "history",
-    title: "時間割変更",
-
-    display_start:
-      formatJstDateTime(startDate),
-
-    display_end:
-      formatJstDateTime(endDate),
-
-    body:
-      `${classItem.label} ` +
-      `${state.data.courses[classItem.course] || ""} ` +
-      `${period}限を「${subject || "空欄"}」に変更しました。`,
-
+    title: `時間割変更（${edits.length}件）`,
+    display_start: now.toISOString(),
+    display_end: endDate.toISOString(),
+    body: `実行時刻: ${formatJstDateTime(now)} / 実行ユーザーID: ${userId} / 変更内容: ${changesText}`,
     targets: {
-      grades: [String(classItem.grade)],
-      classes: [String(classItem.classNo)],
-      courses: [classItem.course]
+      grades: ["all"],
+      classes: ["all"],
+      courses: ["all"]
     }
   };
 
-  let result;
-
-  try {
-    result = await requestNotificationApi(
-      "insert",
-      { notification: history }
-    );
-  } catch (error) {
-    console.error("変更履歴の保存に失敗:", error);
-
-    showToast(
-      "変更履歴の保存に失敗しました。",
-      5000,
-      "error"
-    );
-
-    throw error;
-  }
-
-  console.log("変更履歴の保存成功:", result.data);
-
+  const result = await requestNotificationApi("insert", { notification: history });
   if (result.data) {
     state.data.notifications.unshift(result.data);
   }
-
   renderAdminPosts();
 }
 
