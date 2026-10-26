@@ -7044,3 +7044,82 @@ function getGasAdminSubjectTooltip(
     }`
   ].join("\n");
 }
+
+// 時間割コマンド入力欄と展開エディタの同期（UI段階）
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("command-editor-modal");
+  const editor = document.getElementById("command-editor-textarea");
+  const compactInputs = Array.from(document.querySelectorAll("[data-command-input]"));
+  const expandButtons = Array.from(document.querySelectorAll("[data-command-expand]"));
+  const closeButtons = Array.from(document.querySelectorAll("[data-command-close]"));
+
+  if (!modal || !editor || compactInputs.length === 0) return;
+
+  let lastFocusedElement = null;
+  let activeCompactInput = compactInputs[0];
+
+  const syncCompactToEditor = () => {
+    const focused = compactInputs.find((input) => input === document.activeElement);
+    if (focused) activeCompactInput = focused;
+    editor.value = activeCompactInput?.value || compactInputs[0].value || "";
+  };
+
+  const syncEditorToCompact = () => {
+    const value = editor.value;
+    compactInputs.forEach((input) => {
+      input.value = value;
+    });
+  };
+
+  const openModal = (button) => {
+    const entry = button.closest("[data-command-entry]");
+    const input = entry?.querySelector("[data-command-input]");
+    if (input) activeCompactInput = input;
+    lastFocusedElement = document.activeElement;
+    syncCompactToEditor();
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("command-editor-open");
+    editor.focus();
+  };
+
+  const closeModal = () => {
+    syncEditorToCompact();
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("command-editor-open");
+    if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+      lastFocusedElement.focus();
+    }
+  };
+
+  compactInputs.forEach((input) => {
+    input.addEventListener("focus", () => {
+      activeCompactInput = input;
+    });
+    input.addEventListener("input", () => {
+      if (modal.hidden) {
+        compactInputs.forEach((other) => {
+          if (other !== input) other.value = input.value;
+        });
+      }
+    });
+  });
+
+  editor.addEventListener("input", syncEditorToCompact);
+  expandButtons.forEach((button) => {
+    button.addEventListener("click", () => openModal(button));
+  });
+  closeButtons.forEach((button) => button.addEventListener("click", closeModal));
+
+  document.addEventListener("keydown", (event) => {
+    if (modal.hidden) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeModal();
+    }
+    if (event.key === "Tab" && event.target === editor && !event.shiftKey) {
+      // UI段階ではTabを通常のフォーカス移動に任せ、補完実装時に動作を拡張する。
+    }
+  });
+});
