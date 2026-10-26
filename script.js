@@ -6399,7 +6399,26 @@ async function showSubjectSelectionDialog(
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
+    // ========================================
+    // joint科目を構成する個別subject_idを候補から除外
+    // joint自体のsubject_idは候補に残す。
+    // ※科目マスターや保存データは変更しない。
+    // ========================================
+    const jointMemberSubjectIds = new Set();
 
+    subjects.forEach((subject) => {
+      if (!Array.isArray(subject.subject_ids)) {
+        return;
+      }
+
+      subject.subject_ids.forEach((memberId) => {
+        const id = String(memberId || "").trim();
+        if (id) {
+          jointMemberSubjectIds.add(id);
+        }
+      });
+    });
+      
     // ========================================
     // 一覧を表示
     // ========================================
@@ -6446,6 +6465,12 @@ async function showSubjectSelectionDialog(
             String(
               subject.subject_id || ""
             ).trim();
+
+          // 他のjoint科目の構成科目として使われているIDは、
+          // 時間割変更の候補一覧には表示しない。
+          if (jointMemberSubjectIds.has(subjectId)) {
+            return false;
+          }
         
           const subjectName =
             String(
