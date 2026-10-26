@@ -7045,7 +7045,352 @@ function getGasAdminSubjectTooltip(
   ].join("\n");
 }
 
-// 時間割コマンド入力欄と展開エディタの同期（UI段階）
+// ========================================
+// 時間割コマンド：解析・検証・プレビュー・保留編集への反映
+// API/GASの通信経路は既存のものを利用する。
+// ========================================
+function commandSetStatus(message, kind = "info") {
+  const status = document.getElementById("command-editor-status");
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.kind = kind;
+}
+
+function commandCourseAlias(course) {
+  const normalized = String(course || "").trim();
+  const aliases = {
+    "": "", "探文": "tb", "探理": "tr", "文系": "bun",
+    "理系": "ri", "農": "nou", "福": "fuku"
+  };
+  return Object.prototype.hasOwnProperty.call(aliases, normalized) ? aliases[normalized] : null;
+}
+
+function parseTimetableCommandText(text) {
+  const commands = [];
+  const errors = [];
+  const lines = String(text || "").split(/\r?\n/);
+  lines.forEach((rawLine, lineIndex) => {
+    const parts = rawLine.split(",").map(part => part.trim()).filter(Boolean);
+    parts.forEach((linePart) => {
+      const match = linePart.match(/^(\w+)\s+(\d+)(?:\s+to\s+(?:(\w+)\s+)?(\d+))?\s*=\s*(\S+)$/i);
+      if (!match) {
+        errors.push(`${lineIndex + 1}行目「${linePart}」: 書式を確認してください。例：21tb 1 to 4 = jSP101`);
+        return;
+      }
+      commands.push({
+        line: lineIndex + 1,
+        startClass: match[1].toLowerCase(),
+        startPeriod: Number(match[2]),
+        endClass: (match[3] || match[1]).toLowerCase(),
+        endPeriod: Number(match[4] || match[2]),
+        subjectId: match[5]
+      });
+    });
+  });
+  if (!commands.length && !errors.length) errors.push("コマンドを入力してください。");
+  return { commands, errors };
+}
+
+function resolveCommandClass(alias, classes) {
+  const value = String(alias || "").toLowerCase();
+  return classes.find(item => {
+    const grade = String(item.grade || "").trim();
+    const classNo = String(item.class_no || "").trim();
+    const courseAlias = commandCourseAlias(item.course);
+    const base = `${grade}${classNo}`;
+    return value === base || (courseAlias && value === `${base}${courseAlias}`);
+  }) || null;
+}
+
+function getCommandSubjectId(subject) {
+  return String(subject?.subject_id || "").trim();
+}
+
+async function buildTimetableCommandPlan(text) {
+  const parsed = parseTimetableCommandText(text);
+  if (parsed.errors.length) return { errors: parsed.errors, changes: [] };
+
+  const [metadata, subjects, timetables] = await Promise.all([
+    fetchClassMetadata(), fetchAllGasSubjects(), fetchAllAdminTimetables()
+  ]);
+  if (!metadata || !subjects || !timetables) {
+    return { errors: ["クラス・科目・時間割データを取得できませんでした。再試行してください。"], changes: [] };
+  }
+
+  const classes = ["1", "2", "3"].flatMap(grade => metadata[grade]?.classes || [])
+    .slice()
+    .sort((a, b) => String(a.class_id).localeCompare(String(b.class_id), undefined, { numeric: true }));
+  const subjectIds = new Set(subjects.map(getCommandSubjectId).filter(Boolean));
+  const periodNumbers = (Array.isArray(state.data.periods) && state.data.periods.length
+    ? state.data.periods.map(Number)
+    : [1, 2, 3, 4, 5, 6, 7]);
+  const action = state.view === "deep-admin" ? "updateTimetableBase" : "updateTimetableChange";
+  const day = state.view === "deep-admin" ? (state.deepAdminDay || $("#deep-admin-day")?.value || "月") : (state.adminDay || $("#admin-day")?.value || "月");
+  const errors = [];
+  const plannedByKey = new Map();
+
+  parsed.commands.forEach(command => {
+    const start = resolveCommandClass(command.startClass, classes);
+    const end = resolveCommandClass(command.endClass, classes);
+    if (!start) { errors.push(`${command.line}行目: 開始クラス「${command.startClass}」が見つかりません。`); return; }
+    if (!end) { errors.push(`${command.line}行目: 終了クラス「${command.endClass}」が見つかりません。`); return; }
+    if (!periodNumbers.includes(command.startPeriod) || !periodNumbers.includes(command.endPeriod)) {
+      errors.push(`${command.line}行目: 時限は ${periodNumbers[0]}～${periodNumbers[periodNumbers.length - 1]} の範囲で指定してください。`); return;
+    }
+    const subjectId = command.subjectId.toLowerCase() === "none" ? "" : command.subjectId;
+    if (subjectId && !subjectIds.has(subjectId)) {
+      errors.push(`${command.line}行目: 科目ID「${subjectId}」が見つかりません。`); return;
+    }
+    const startIndex = classes.findIndex(item => String(item.class_id) === String(start.class_id));
+    const endIndex = classes.findIndex(item => String(item.class_id) === String(end.class_id));
+    const firstClassIndex = Math.min(startIndex, endIndex);
+    const lastClassIndex = Math.max(startIndex, endIndex);
+    const firstPeriod = Math.min(command.startPeriod, command.endPeriod);
+    const lastPeriod = Math.max(command.startPeriod, command.endPeriod);
+    for (let ci = firstClassIndex; ci <= lastClassIndex; ci++) {
+      const classData = classes[ci];
+      for (let period = firstPeriod; period <= lastPeriod; period++) {
+        if (!periodNumbers.includes(period)) continue;
+        const grade = String(classData.grade);
+        const classId = String(classData.class_id);
+        const timetable = timetables[grade]?.timetable?.[day]?.[classId] || [];
+        const row = timetable.find(item => Number(item.period) === period) || {};
+        const pending = getPendingTimetableEdit(action, classId, day, period, grade);
+        const originalValue = pending
+          ? pending.originalValue
+          : String(action === "updateTimetableChange" ? (row.subject_change || "") : (row.subject_base || ""));
+        const key = getTimetableEditKey(action, classId, day, period, grade);
+        plannedByKey.set(key, {
+          key, action, classId, grade,
+          classNo: String(classData.class_no || ""),
+          course: String(classData.course || ""),
+          classLabel: `${grade}${classData.class_no || ""}H${classData.course ? ` ${classData.course}` : ""}`,
+          day, period, originalValue, newValue: subjectId,
+          ...(action === "updateTimetableChange" ? { subjectChange: subjectId, teacherChange: "" } : { subjectBase: subjectId })
+        });
+      }
+    }
+  });
+
+  if (errors.length) return { errors, changes: [] };
+  const changes = Array.from(plannedByKey.values()).filter(change =>
+    String(change.originalValue) !== String(change.newValue)
+  );
+  return { errors: [], changes, day, action };
+}
+
+function renderTimetableCommandPreview(plan) {
+  const preview = document.getElementById("command-editor-preview");
+  const applyButton = document.getElementById("command-apply-button");
+  if (!preview || !applyButton) return;
+  preview.replaceChildren();
+  if (!plan || plan.errors?.length) {
+    preview.hidden = true;
+    applyButton.disabled = true;
+    return;
+  }
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const header = document.createElement("tr");
+  ["クラス", "曜日・時限", "変更前", "変更後"].forEach(label => {
+    const th = document.createElement("th"); th.textContent = label; header.append(th);
+  });
+  thead.append(header); table.append(thead);
+  const tbody = document.createElement("tbody");
+  plan.changes.slice(0, 300).forEach(change => {
+    const tr = document.createElement("tr");
+    [change.classLabel, `${change.day}${change.period}限`, change.originalValue || "（空欄）", change.newValue || "（空欄）"].forEach(value => {
+      const td = document.createElement("td"); td.textContent = value; tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody); preview.append(table); preview.hidden = false;
+  if (plan.changes.length > 300) {
+    const note = document.createElement("p"); note.textContent = `先頭300件を表示しています（合計${plan.changes.length}件）。`; note.style.padding = "0 10px"; preview.append(note);
+  }
+  applyButton.disabled = plan.changes.length === 0;
+}
+
+function stageTimetableCommandPlan(plan) {
+  if (!plan || !Array.isArray(plan.changes) || !plan.changes.length) return false;
+  const before = cloneTimetableEditMap(state.data.pendingTimetableEdits || {});
+  const next = cloneTimetableEditMap(before);
+  plan.changes.forEach(change => {
+    if (String(change.newValue) === String(change.originalValue)) {
+      delete next[change.key];
+    } else {
+      next[change.key] = change;
+    }
+  });
+  if (JSON.stringify(before) === JSON.stringify(next)) return false;
+  if (!state.data.pendingEditUndoStack.length) state.data.pendingEditUndoStack.push(before);
+  state.data.pendingEditUndoStack.push(next);
+  if (state.data.pendingEditUndoStack.length > 100) state.data.pendingEditUndoStack.shift();
+  state.data.pendingEditRedoStack = [];
+  state.data.pendingTimetableEdits = next;
+  updateBatchEditToolbar();
+  updatePendingConflictState().then(refreshBatchEditScreen).catch(error => {
+    console.error("コマンド変更の重複判定に失敗:", error);
+    refreshBatchEditScreen();
+  });
+  refreshBatchEditScreen();
+  return true;
+}
+
+function installTimetableCommandFeatures() {
+  const editor = document.getElementById("command-editor-textarea");
+  const validateButton = document.getElementById("command-validate-button");
+  const previewButton = document.getElementById("command-preview-button");
+  const applyButton = document.getElementById("command-apply-button");
+  const previewElement = document.getElementById("command-editor-preview");
+  if (!editor || !validateButton || !previewButton || !applyButton) return;
+  let currentPlan = null;
+  const suggestionBox = document.createElement("div");
+  suggestionBox.className = "command-suggestions";
+  suggestionBox.hidden = true;
+  suggestionBox.setAttribute("role", "listbox");
+  document.body.append(suggestionBox);
+  let suggestionTarget = null;
+  let suggestionItems = [];
+  let suggestionIndex = 0;
+  let subjectsPromise = null;
+
+  const hideSuggestions = () => {
+    suggestionBox.hidden = true;
+    suggestionTarget = null;
+    suggestionItems = [];
+    suggestionIndex = 0;
+  };
+
+  const updateSuggestions = async (target) => {
+    const cursor = target.selectionStart ?? target.value.length;
+    const beforeCursor = target.value.slice(0, cursor);
+    const line = beforeCursor.split(/\r?\n/).pop() || "";
+    const match = line.match(/=\s*([a-zA-Z0-9_]*)$/);
+    if (!match) { hideSuggestions(); return; }
+    const prefix = match[1];
+    if (!subjectsPromise) subjectsPromise = fetchAllGasSubjects();
+    const subjects = await subjectsPromise;
+    if (!Array.isArray(subjects) || document.activeElement !== target) { hideSuggestions(); return; }
+    suggestionItems = subjects.map(subject => ({
+      id: getCommandSubjectId(subject),
+      name: String(subject.subject_name || "")
+    })).filter(item => item.id && item.id.toLowerCase().startsWith(prefix.toLowerCase()))
+      .filter((item, index, all) => all.findIndex(other => other.id === item.id) === index)
+      .slice(0, 12);
+    if (!suggestionItems.length) { hideSuggestions(); return; }
+    suggestionTarget = target;
+    suggestionIndex = 0;
+    suggestionBox.replaceChildren();
+    suggestionItems.forEach((item, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "command-suggestion";
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", index === suggestionIndex ? "true" : "false");
+      const id = document.createElement("strong"); id.textContent = item.id;
+      const name = document.createElement("span"); name.textContent = item.name;
+      option.append(id, name);
+      option.addEventListener("mousedown", event => event.preventDefault());
+      option.addEventListener("click", () => chooseSuggestion(index));
+      suggestionBox.append(option);
+    });
+    const rect = target.getBoundingClientRect();
+    suggestionBox.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 330))}px`;
+    suggestionBox.style.top = `${Math.min(rect.bottom + 4, window.innerHeight - 240)}px`;
+    suggestionBox.style.width = `${Math.min(Math.max(rect.width, 250), window.innerWidth - 16)}px`;
+    suggestionBox.hidden = false;
+  };
+
+  const chooseSuggestion = (index = suggestionIndex) => {
+    const target = suggestionTarget;
+    const item = suggestionItems[index];
+    if (!target || !item) return;
+    const cursor = target.selectionStart ?? target.value.length;
+    const before = target.value.slice(0, cursor);
+    const after = target.value.slice(cursor);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const line = before.slice(lineStart);
+    const token = line.match(/(=\s*)([a-zA-Z0-9_]*)$/);
+    if (!token) { hideSuggestions(); return; }
+    const replaceStart = cursor - token[2].length;
+    target.value = target.value.slice(0, replaceStart) + item.id + after;
+    const nextCursor = replaceStart + item.id.length;
+    target.setSelectionRange(nextCursor, nextCursor);
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+    target.focus();
+    hideSuggestions();
+  };
+
+  const attachAutocomplete = target => {
+    target.addEventListener("input", () => { updateSuggestions(target).catch(() => hideSuggestions()); });
+    target.addEventListener("click", () => { updateSuggestions(target).catch(() => hideSuggestions()); });
+    target.addEventListener("keydown", event => {
+      if (suggestionBox.hidden || suggestionTarget !== target) return;
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        suggestionIndex = (suggestionIndex + (event.key === "ArrowDown" ? 1 : suggestionItems.length - 1)) % suggestionItems.length;
+        Array.from(suggestionBox.children).forEach((option, index) => option.setAttribute("aria-selected", index === suggestionIndex ? "true" : "false"));
+      } else if (event.key === "Tab" || event.key === "Enter") {
+        event.preventDefault(); chooseSuggestion(suggestionIndex);
+      } else if (event.key === "Escape") {
+        event.preventDefault(); hideSuggestions();
+      }
+    });
+    target.addEventListener("blur", () => setTimeout(() => {
+      if (!suggestionBox.matches(":hover")) hideSuggestions();
+    }, 120));
+  };
+
+  document.querySelectorAll("[data-command-input]").forEach(attachAutocomplete);
+  attachAutocomplete(editor);
+
+  const validate = async (withPreview) => {
+    validateButton.disabled = true; previewButton.disabled = true; applyButton.disabled = true;
+    commandSetStatus("クラス・科目・時間割を確認しています…");
+    try {
+      const plan = await buildTimetableCommandPlan(editor.value);
+      currentPlan = plan;
+      if (plan.errors.length) {
+        commandSetStatus(plan.errors.join("\n"), "error");
+        renderTimetableCommandPreview(null);
+        return;
+      }
+      commandSetStatus(`検証成功：${plan.changes.length}セルが変更対象です。時間割への反映前にプレビューを確認してください。`, "success");
+      if (withPreview) renderTimetableCommandPreview(plan);
+      else { previewElement.hidden = true; applyButton.disabled = true; }
+    } catch (error) {
+      console.error("時間割コマンドの検証に失敗:", error);
+      currentPlan = null;
+      commandSetStatus(error.message || "検証に失敗しました。", "error");
+      renderTimetableCommandPreview(null);
+    } finally {
+      validateButton.disabled = false; previewButton.disabled = false;
+    }
+  };
+
+  validateButton.addEventListener("click", () => validate(false));
+  previewButton.addEventListener("click", () => validate(true));
+  editor.addEventListener("input", () => {
+    currentPlan = null; applyButton.disabled = true; previewElement.hidden = true;
+    commandSetStatus("入力内容が変わりました。反映する前にもう一度プレビューしてください。");
+  });
+  applyButton.addEventListener("click", () => {
+    if (!currentPlan || applyButton.disabled) return;
+    const changed = stageTimetableCommandPlan(currentPlan);
+    if (!changed) {
+      commandSetStatus("反映できる新しい変更はありません。", "info");
+      return;
+    }
+    commandSetStatus(`変更を保留編集に反映しました（${currentPlan.changes.length}セル）。「まとめて保存」で確定してください。`, "success");
+    applyButton.disabled = true;
+    currentPlan = null;
+  });
+}
+
+
+// 時間割コマンド入力欄と展開エディタの同期
+
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("command-editor-modal");
   const editor = document.getElementById("command-editor-textarea");
