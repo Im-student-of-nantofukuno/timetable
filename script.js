@@ -4941,17 +4941,51 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+// 選択された曜日について、今日以降で最も近い日付を返す。
+// 例：土曜日に「月」を選択した場合は、次の月曜日。
+function getNextStudentTargetDate(dayName) {
+  const dayNumbers = {
+    "日": 0,
+    "月": 1,
+    "火": 2,
+    "水": 3,
+    "木": 4,
+    "金": 5,
+    "土": 6
+  };
+
+  const targetDay = dayNumbers[dayName];
+  if (targetDay === undefined) {
+    throw new Error("対象曜日が正しくありません。");
+  }
+
+  const targetDate = new Date();
+  const daysAhead = (targetDay - targetDate.getDay() + 7) % 7;
+  targetDate.setDate(targetDate.getDate() + daysAhead);
+
+  const pad = value => String(value).padStart(2, "0");
+  return [
+    targetDate.getFullYear(),
+    pad(targetDate.getMonth() + 1),
+    pad(targetDate.getDate())
+  ].join("-");
+}
+
 
 // ========================================
 // GASから年組ごとの全コースデータを取得
 //
-// grade + class_no だけで取得する。
+// grade + class_no + 対象日で取得する。
 // コースは指定しない。
 // ========================================
 async function fetchGasClassOptions(grade, classNo) {
+  const selectedDay =
+    document.getElementById("student-day")?.value || "月";
+  const targetDate = getNextStudentTargetDate(selectedDay);
+
 
   const cacheKey =
-    `${String(grade)}-${String(classNo)}`;
+    `${String(grade)}-${String(classNo)}-${targetDate}`;
 
   // ========================================
   // ブラウザ側キャッシュ
@@ -4975,7 +5009,8 @@ async function fetchGasClassOptions(grade, classNo) {
     const params =
       new URLSearchParams({
         grade: String(grade),
-        class_no: String(classNo)
+        class_no: String(classNo),
+        target_date: targetDate
       });
 
     const url =
