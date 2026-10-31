@@ -39,6 +39,9 @@ const state = {
   },
   adminDay: "月",
   deepAdminDay: "月",
+  // 0=今週、1=来週、2=再来週、3=再々来週（GAS側の週枠計算と連携）
+  adminWeekOffset: 0,
+  deepAdminWeekOffset: 0,
   data: {
     periods: [],
     courses: {},
@@ -57,6 +60,7 @@ const state = {
     gasAllSubjectsCache: null,
     gasAllSubjectsPromise : null,
     gasAllAdminTimetablesPromise : null,
+    gasAllAdminTimetablesPromises: {},
     gasTeacherTimetableCache: {},
     gasAdminTimetablePromises: {},
     pendingTimetableEdits: {},
@@ -822,6 +826,11 @@ function bindEvents() {
     renderDeepAdmin
   );
 
+  $("#admin-week")?.addEventListener("change", () => {
+    state.adminWeekOffset = Number($("#admin-week").value) || 0;
+    renderQuickAdmin();
+  });
+
   $("#deep-admin-day")?.addEventListener(
     "change",
     () => {
@@ -831,7 +840,12 @@ function bindEvents() {
       renderDeepAdmin();
     }
   );
-
+  
+  $("#deep-admin-week")?.addEventListener("change", () => {
+    state.deepAdminWeekOffset = Number($("#deep-admin-week").value) || 0;
+    renderDeepAdmin();
+  });
+  
   $$(".segmented-control [data-admin-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.adminMode = button.dataset.adminMode;
@@ -2822,7 +2836,7 @@ async function renderQuickAdmin() {
   
   // 時間割取得は重複一覧を待たずに開始
   const gasDataPromise =
-    fetchGasAdminTimetable(grade);
+   fetchGasAdminTimetable(grade, state.adminWeekOffset);
   
   
   // 重複一覧の取得完了を待つ
@@ -3030,7 +3044,7 @@ async function renderDeepAdmin() {
   }
   
   // 浅い管理画面と同じGASデータを使用
-  const gasData = await fetchGasAdminTimetable(grade);
+  const gasData = await fetchGasAdminTimetable(grade, state.deepAdminWeekOffset);
 
   if (!gasData) {
     matrix.replaceChildren(
@@ -3661,20 +3675,24 @@ function cloneTimetableEditMap(source = {}) {
   return JSON.parse(JSON.stringify(source));
 }
 
-function getTimetableEditKey(action, classId, day, period, grade) {
+function getTimetableEditKey(action, classId, day, period, grade, weekOffset = 0) {
   return [
     action,
     String(grade),
     String(classId),
     String(day),
-    String(period)
+    String(period),
+    action === "updateTimetableChange" ? `w${Number(weekOffset) || 0}` : "base"
+
   ].join("|");
 }
 
 function getPendingTimetableEdit(action, classId, day, period, grade) {
   const edits = state.data.pendingTimetableEdits || {};
   if (grade !== undefined && grade !== null) {
-    return edits[getTimetableEditKey(action, classId, day, period, grade)] || null;
+    const weekOffset = action === "updateTimetableChange" ? state.adminWeekOffset : 0;
+    return edits[getTimetableEditKey(action, classId, day, period, grade, weekOffset)] || null;
+
   }
 
   return Object.values(edits).find(edit =>
@@ -4004,7 +4022,8 @@ function stageTimetableEdit({
     classItem.id,
     day,
     period,
-    classItem.grade
+    classItem.grade,
+    action === "updateTimetableChange" ? state.adminWeekOffset : 0
   );
 
   if (!state.data.pendingEditUndoStack.length) {
@@ -4026,6 +4045,7 @@ function stageTimetableEdit({
       classLabel: String(classItem.label || `${classItem.grade}年${classItem.classNo}組`),
       day,
       period: Number(period),
+      weekOffset: action === "updateTimetableChange" ? state.adminWeekOffset : null,
       originalValue: normalizedOriginalValue,
       newValue: normalizedNewValue,
       ...(action === "updateTimetableChange"
@@ -4286,7 +4306,8 @@ async function savePendingTimetableEdits(action) {
         day: edit.day,
         period: edit.period,
         subjectChange: edit.subjectChange,
-        teacherChange: edit.teacherChange || ""
+        teacherChange: edit.teacherChange || "",
+        weekOffset: Number(edit.weekOffset ?? state.adminWeekOffset) || 0
       }
     : {
         classId: edit.classId,
@@ -4329,7 +4350,7 @@ async function savePendingTimetableEdits(action) {
     state.data.pendingEditRedoStack = [];
 
     edits.forEach(edit => {
-      delete state.data.gasAdminTimetableCache[String(edit.grade)];
+      delete state.data.gasAdminTimetableCache[`${String(edit.grade)}:w${Number(edit.weekOffset ?? state.adminWeekOffset) || 0}`];
     });
 
     const results = Array.isArray(result.results) ? result.results : [];
@@ -5217,9 +5238,10 @@ async function fetchClassMetadata() {
 // GASから浅い管理画面用の時間割を取得
 // 学年単位で月～金をまとめて取得
 // ========================================
-async function fetchGasAdminTimetable(grade) {
+async function fetchGasAdminTimetable(grade, weekOffset = 0) {
+  const normalizedWeekOffset = Math.max(0, Math.min(3, Number(weekOffset) || 0));
   const cacheKey =
-    String(grade);
+    `${String(grade)}:w${normalizedWeekOffset}`;
 
   // ========================================
   // ① ブラウザキャッシュ
@@ -5285,7 +5307,8 @@ async function fetchGasAdminTimetable(grade) {
           const params =
             new URLSearchParams({
               admin: "quick",
-              grade: cacheKey
+              grade: String(grade),
+              weekOffset: String(normalizedWeekOffset)
             });
 
           const url =
@@ -5874,69 +5897,42 @@ async function fetchAllGasSubjects() {
 // ========================================
 // 重複判定用：全学年の時間割を取得
 // ========================================
-async function fetchAllAdminTimetables() {
-
-  // 取得中の通信があれば、それを共有
-  if (state.data.gasAllAdminTimetablesPromise) {
-
-    console.log(
-      "全学年時間割：取得中の通信を共有"
-    );
-
-    return await state.data.gasAllAdminTimetablesPromise;
+async function fetchAllAdminTimetables(weekOffset = state.adminWeekOffset) {
+  const normalizedWeekOffset = Math.max(0, Math.min(3, Number(weekOffset) || 0));
+  const promiseKey = `w${normalizedWeekOffset}`;
+  if (!state.data.gasAllAdminTimetablesPromises) {
+    state.data.gasAllAdminTimetablesPromises = {};
   }
 
-  state.data.gasAllAdminTimetablesPromise =
-    (async () => {
+ // 同じ週枠の取得中通信だけ共有する
+  if (state.data.gasAllAdminTimetablesPromises[promiseKey]) {
+    return await state.data.gasAllAdminTimetablesPromises[promiseKey];
+  }
 
-      const results =
-        await Promise.all(
-          ["1", "2", "3"].map(
-            async (grade) => {
-
-              const data =
-                await fetchGasAdminTimetable(grade);
-
-              if (!data) {
-                console.error(
-                  `重複判定用の${grade}年時間割取得に失敗しました`
-                );
-
-                return null;
-              }
-
-              return {
-                grade,
-                data
-              };
-            }
-          )
-        );
-
-      const timetables = {};
-
-      for (const result of results) {
-
-        if (!result) {
+  state.data.gasAllAdminTimetablesPromises[promiseKey] = (async () => {
+    const results = await Promise.all(
+      ["1", "2", "3"].map(async (grade) => {
+        const data = await fetchGasAdminTimetable(grade, normalizedWeekOffset);
+        if (!data) {
+          console.error(`重複判定用の${grade}年時間割取得に失敗しました`);
           return null;
         }
-
-        timetables[result.grade] =
-          result.data;
-      }
-
-      return timetables;
-
-    })();
+        return { grade, data };
+      })
+    );
+    const timetables = {};
+    for (const result of results) {
+      if (!result) return null;
+      timetables[result.grade] = result.data;
+    }
+    return timetables;
+  })();
 
   try {
-
-    return await state.data.gasAllAdminTimetablesPromise;
-
+    return await state.data.gasAllAdminTimetablesPromises[promiseKey];
   } finally {
 
-    state.data.gasAllAdminTimetablesPromise =
-      null;
+    delete state.data.gasAllAdminTimetablesPromises[promiseKey];
   }
 }
 
