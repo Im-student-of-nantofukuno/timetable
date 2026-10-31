@@ -4007,6 +4007,19 @@ async function updatePendingConflictState(allSubjects = state.data.pendingConfli
   }
 }
 
+function getSelectedAdminWeekOffset() {
+  // 週選択UIの値（0=今週、1=来週、2=再来週、3=再々来週）を取得する。
+  // UIのIDに依存せず、0～3の選択肢を持つセレクトを対象にする。
+  const selects = Array.from(document.querySelectorAll("select"));
+  const candidates = selects.filter(select => {
+    const values = Array.from(select.options || []).map(option => String(option.value));
+    return ["0", "1", "2", "3"].every(value => values.includes(value));
+  });
+  const weekSelect = candidates.find(select => select.getClientRects().length > 0) || candidates[0];
+  const value = Number(weekSelect?.value ?? 0);
+  return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0;
+}
+
 function stageTimetableEdit({
   action,
   classItem,
@@ -4045,6 +4058,9 @@ function stageTimetableEdit({
       classLabel: String(classItem.label || `${classItem.grade}年${classItem.classNo}組`),
       day,
       period: Number(period),
+      ...(action === "updateTimetableChange"
+        ? { weekOffset: getSelectedAdminWeekOffset() }
+        : {}),
       weekOffset: action === "updateTimetableChange" ? state.adminWeekOffset : null,
       originalValue: normalizedOriginalValue,
       newValue: normalizedNewValue,
@@ -4306,8 +4322,7 @@ async function savePendingTimetableEdits(action) {
         day: edit.day,
         period: edit.period,
         subjectChange: edit.subjectChange,
-        teacherChange: edit.teacherChange || "",
-        weekOffset: Number(edit.weekOffset ?? state.adminWeekOffset) || 0
+        weekOffset: Number.isInteger(edit.weekOffset) ? edit.weekOffset : getSelectedAdminWeekOffset()
       }
     : {
         classId: edit.classId,
