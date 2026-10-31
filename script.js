@@ -40,7 +40,7 @@ const state = {
   adminDay: "月",
   deepAdminDay: "月",
   // 0=今週、1=来週、2=再来週、3=再々来週（GAS側の週枠計算と連携）
-  adminWeekOffset: 0,
+  adminWeekOffset: 1,
   data: {
     periods: [],
     courses: {},
