@@ -2805,7 +2805,7 @@ function updateQuickAdminSelectedDate() {
 
   const targetDate = getNextAdminWeekdayDate(day);
   targetDate.setDate(
-    targetDate.getDate() + (Number(state.adminWeekOffset) || 0) * 7
+    targetDate.getDate() + ((Number(state.adminWeekOffset) || 0) - 1)* 7
   );
   
   const pad = (number) => String(number).padStart(2, "0");
