@@ -2790,6 +2790,38 @@ function renderStudentNotices() {
   });
 }
 
+function getNextAdminWeekdayDate(day, now = new Date()) {
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  const targetWeekday = weekdays.indexOf(day);
+  const targetDate = new Date(now);
+  targetDate.setHours(0, 0, 0, 0);
+
+  if (targetWeekday >= 0) {
+    const daysUntil = (targetWeekday - targetDate.getDay() + 7) % 7;
+    targetDate.setDate(targetDate.getDate() + daysUntil);
+  }
+
+  return targetDate;
+}
+
+function updateQuickAdminSelectedDate() {
+  const day = $("#admin-day")?.value || state.adminDay || "月";
+  const dateElement = $("#admin-selected-date-value");
+  if (!dateElement) return;
+
+  const targetDate = getNextAdminWeekdayDate(day);
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  const pad = (number) => String(number).padStart(2, "0");
+  const dateText = `${targetDate.getFullYear()}/${pad(targetDate.getMonth() + 1)}/${pad(targetDate.getDate())}（${weekdays[targetDate.getDay()]}）`;
+
+  dateElement.dateTime = [
+    targetDate.getFullYear(),
+    pad(targetDate.getMonth() + 1),
+    pad(targetDate.getDate())
+  ].join("-");
+  dateElement.textContent = dateText;
+}
+
 async function renderQuickAdmin() {
   // 浅い管理画面を表示している管理者以外ではGASを呼ばない
   if (
@@ -2805,6 +2837,8 @@ async function renderQuickAdmin() {
 
   const grade =
     $("#admin-grade")?.value || "2";
+
+  updateQuickAdminSelectedDate();
 
   const matrix =
     $("#change-matrix");
