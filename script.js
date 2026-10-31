@@ -41,7 +41,6 @@ const state = {
   deepAdminDay: "月",
   // 0=今週、1=来週、2=再来週、3=再々来週（GAS側の週枠計算と連携）
   adminWeekOffset: 0,
-  deepAdminWeekOffset: 0,
   data: {
     periods: [],
     courses: {},
@@ -840,11 +839,6 @@ function bindEvents() {
       renderDeepAdmin();
     }
   );
-  
-  $("#deep-admin-week")?.addEventListener("change", () => {
-    state.deepAdminWeekOffset = Number($("#deep-admin-week").value) || 0;
-    renderDeepAdmin();
-  });
   
   $$(".segmented-control [data-admin-mode]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2810,9 +2804,12 @@ function updateQuickAdminSelectedDate() {
   if (!dateElement) return;
 
   const targetDate = getNextAdminWeekdayDate(day);
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  targetDate.setDate(
+    targetDate.getDate() + (Number(state.adminWeekOffset) || 0) * 7
+  );
+  
   const pad = (number) => String(number).padStart(2, "0");
-  const dateText = `${targetDate.getFullYear()}/${pad(targetDate.getMonth() + 1)}/${pad(targetDate.getDate())}（${weekdays[targetDate.getDay()]}）`;
+  const dateText = `${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
 
   dateElement.dateTime = [
     targetDate.getFullYear(),
@@ -3078,7 +3075,7 @@ async function renderDeepAdmin() {
   }
   
   // 浅い管理画面と同じGASデータを使用
-  const gasData = await fetchGasAdminTimetable(grade, state.deepAdminWeekOffset);
+  const gasData = await fetchGasAdminTimetable(grade, 0);
 
   if (!gasData) {
     matrix.replaceChildren(
@@ -4041,19 +4038,6 @@ async function updatePendingConflictState(allSubjects = state.data.pendingConfli
   }
 }
 
-function getSelectedAdminWeekOffset() {
-  // 週選択UIの値（0=今週、1=来週、2=再来週、3=再々来週）を取得する。
-  // UIのIDに依存せず、0～3の選択肢を持つセレクトを対象にする。
-  const selects = Array.from(document.querySelectorAll("select"));
-  const candidates = selects.filter(select => {
-    const values = Array.from(select.options || []).map(option => String(option.value));
-    return ["0", "1", "2", "3"].every(value => values.includes(value));
-  });
-  const weekSelect = candidates.find(select => select.getClientRects().length > 0) || candidates[0];
-  const value = Number(weekSelect?.value ?? 0);
-  return Number.isInteger(value) && value >= 0 && value <= 3 ? value : 0;
-}
-
 function stageTimetableEdit({
   action,
   classItem,
@@ -4092,10 +4076,9 @@ function stageTimetableEdit({
       classLabel: String(classItem.label || `${classItem.grade}年${classItem.classNo}組`),
       day,
       period: Number(period),
-      ...(action === "updateTimetableChange"
-        ? { weekOffset: getSelectedAdminWeekOffset() }
-        : {}),
-      weekOffset: action === "updateTimetableChange" ? state.adminWeekOffset : null,
+      weekOffset: action === "updateTimetableChange"
+        ? state.adminWeekOffset
+        : null,
       originalValue: normalizedOriginalValue,
       newValue: normalizedNewValue,
       ...(action === "updateTimetableChange"
@@ -4356,7 +4339,7 @@ async function savePendingTimetableEdits(action) {
         day: edit.day,
         period: edit.period,
         subjectChange: edit.subjectChange,
-        weekOffset: Number.isInteger(edit.weekOffset) ? edit.weekOffset : getSelectedAdminWeekOffset()
+        weekOffset: Number.isInteger(edit.weekOffset) ? edit.weekOffset : state.adminWeekOffset
       }
     : {
         classId: edit.classId,
