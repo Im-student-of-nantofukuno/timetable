@@ -4383,6 +4383,17 @@ async function savePendingTimetableEdits(action) {
 
     edits.forEach(edit => {
       delete state.data.gasAdminTimetableCache[`${String(edit.grade)}:w${Number(edit.weekOffset ?? state.adminWeekOffset) || 0}`];
+      
+      // 生徒画面は「学年-組-対象日」でキャッシュしているため、
+      // 保存対象の学年・組に属するキャッシュも無効化する。
+      const studentCachePrefix =
+        `${String(edit.grade)}-${String(edit.classNo)}-`;
+
+      Object.keys(state.data.gasClassOptionsCache || {}).forEach(cacheKey => {
+        if (cacheKey.startsWith(studentCachePrefix)) {
+          delete state.data.gasClassOptionsCache[cacheKey];
+        }
+      });    
     });
 
     const results = Array.isArray(result.results) ? result.results : [];
