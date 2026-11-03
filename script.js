@@ -3366,32 +3366,19 @@ async function getQuickExportData(grade, day, gasData) {
     return profile?.display_name || teacherId;
   }
 
-  // 今日を含め、次に来る対象曜日の日付を計算
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 画面に表示している対象日をそのまま使用する。
+  // 曜日から独自に「次の曜日」を計算すると、週選択とずれるため。
+  const dateElement = document.getElementById("admin-selected-date-value");
+  const targetDateISO = String(dateElement?.dateTime || "").trim();
+  const dateMatch = targetDateISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  const targetWeekday = weekdays.indexOf(day);
 
-  const targetDate = new Date(today);
-
-  if (targetWeekday >= 0) {
-    const daysUntil = (targetWeekday - today.getDay() + 7) % 7;
-    targetDate.setDate(targetDate.getDate() + daysUntil);
+  if (!dateMatch) {
+    throw new Error("画面の対象日を取得できませんでした。");
   }
 
-  const pad = (number) => String(number).padStart(2, "0");
-  const targetDateISO = [
-    targetDate.getFullYear(),
-    pad(targetDate.getMonth() + 1),
-    pad(targetDate.getDate())
-  ].join("-");
+  const date = `${dateMatch[1]}/${dateMatch[2]}/${dateMatch[3]}`;
 
-  const date = [
-    targetDate.getFullYear(),
-    pad(targetDate.getMonth() + 1),
-    pad(targetDate.getDate())
-  ].join("/");
 
   const exportedAt = new Date().toLocaleString("ja-JP", {
     year: "numeric",
