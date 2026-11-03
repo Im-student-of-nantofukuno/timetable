@@ -2848,8 +2848,6 @@ async function renderQuickAdmin() {
   const grade =
     $("#admin-grade")?.value || "2";
 
-  updateQuickAdminSelectedDate();
-
   const matrix =
     $("#change-matrix");
 
@@ -3014,6 +3012,10 @@ async function renderQuickAdmin() {
       matrix.append(cell);
     });
   });
+  
+  // GASから取得した時間割をセルへ反映し終えてから対象日を更新
+  updateQuickAdminSelectedDate();
+
   renderAdminPosts();
 }
 
