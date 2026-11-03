@@ -2787,13 +2787,26 @@ function renderStudentNotices() {
 function getNextAdminWeekdayDate(day, now = new Date()) {
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
   const targetWeekday = weekdays.indexOf(day);
+
+  if (targetWeekday < 0) {
+    throw new Error("対象曜日が正しくありません。");
+  }
+
   const targetDate = new Date(now);
   targetDate.setHours(0, 0, 0, 0);
 
-  if (targetWeekday >= 0) {
-    const daysUntil = (targetWeekday - targetDate.getDay() + 7) % 7;
-    targetDate.setDate(targetDate.getDate() + daysUntil);
-  }
+  // 今週の月曜日を基準にする（日曜日は前週の月曜日）
+  const daysSinceMonday = (targetDate.getDay() + 6) % 7;
+  targetDate.setDate(targetDate.getDate() - daysSinceMonday);
+
+  // 月曜日を0、火曜日を1……金曜日を4として加算
+  const daysFromMonday = targetWeekday === 0
+    ? -1
+    : targetWeekday - 1;
+
+  targetDate.setDate(
+    targetDate.getDate() + daysFromMonday
+  );
 
   return targetDate;
 }
