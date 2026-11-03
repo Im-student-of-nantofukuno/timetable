@@ -2859,24 +2859,17 @@ async function renderQuickAdmin() {
   installBatchEditKeyboardShortcuts();
 
   
- // ========================================
+  // ========================================
   // 重複一覧と学年時間割を並行して取得
   // ========================================
   
-  let conflictPromise =
-    Promise.resolve();
-  
-  if (
-    !state.data.gasAdminConflictInitialized
-  ) {
-  
-    conflictPromise =
-      fetchInitialAdminConflicts()
-        .then(() => {
-          state.data.gasAdminConflictInitialized =
-            true;
-        });
-  }
+  // 表示中の週枠に対応した重複一覧を取得する。
+  // 週を切り替えた際に、前の週の重複状態を使い回さない。
+  const conflictPromise =
+    fetchInitialAdminConflicts(state.adminWeekOffset)
+      .then(() => {
+        state.data.gasAdminConflictInitialized = true;
+      });
   
   // 時間割取得は重複一覧を待たずに開始
   const gasDataPromise =
@@ -3080,7 +3073,7 @@ async function renderDeepAdmin() {
     !state.data.gasAdminConflictInitialized
   ) {
 
-    await fetchInitialAdminConflicts();
+    await fetchInitialAdminConflicts(state.adminWeekOffset);
 
     state.data.gasAdminConflictInitialized =
       true;
@@ -3756,7 +3749,12 @@ function getPendingEditCount(action = null) {
 function hasAdminCellConflict(grade, day, classId, period) {
   // 全時間割を使ったローカル再計算が済んでいれば、それを優先する。
   // これにより、未保存編集で解消した重複が古いサーバー結果で赤く残らない。
-  if (state.data.pendingConflictTimetables) {
+  if (
+    state.data.pendingConflictTimetables &&
+    state.data.pendingConflictWeekOffset ===
+      Math.max(0, Math.min(3, Number(state.adminWeekOffset) || 0))
+  ) {
+
     return Boolean(
       state.data.pendingConflictCells?.[`${day}|${period}|${classId}`]
     );
@@ -3912,10 +3910,20 @@ function refreshBatchEditScreen() {
 
 async function updatePendingConflictState(allSubjects = state.data.pendingConflictSubjects,
                                          allTimetables = state.data.pendingConflictTimetables) {
-  if (!Array.isArray(allSubjects) || !allTimetables) {
+  const currentWeekOffset = Math.max(
+    0,
+    Math.min(3, Number(state.adminWeekOffset) || 0)
+  );
+
+  if (
+    !Array.isArray(allSubjects) ||
+    !allTimetables ||
+    state.data.pendingConflictWeekOffset !== currentWeekOffset
+  ) {
+
     const [subjects, timetables] = await Promise.all([
       fetchAllGasSubjects(),
-      fetchAllAdminTimetables()
+      fetchAllAdminTimetables(currentWeekOffset)
     ]);
     if (!subjects || !timetables) return;
     allSubjects = subjects;
@@ -3924,6 +3932,7 @@ async function updatePendingConflictState(allSubjects = state.data.pendingConfli
 
   state.data.pendingConflictSubjects = allSubjects;
   state.data.pendingConflictTimetables = allTimetables;
+  state.data.pendingConflictWeekOffset = currentWeekOffset;
 
   const stagedTimetables = cloneTimetableEditMap(allTimetables);
   Object.values(state.data.pendingTimetableEdits || {}).forEach(edit => {
@@ -5599,7 +5608,12 @@ async function fetchGasAdminTimetable(grade, weekOffset = 0) {
 // 全学年・全クラス対象
 // ========================================
 
-async function fetchInitialAdminConflicts() {
+async function fetchInitialAdminConflicts(weekOffset = state.adminWeekOffset) {
+
+  const normalizedWeekOffset = Math.max(
+    0,
+    Math.min(3, Number(weekOffset) || 0)
+  );
 
   try {
         
@@ -5621,7 +5635,7 @@ async function fetchInitialAdminConflicts() {
     }
     
     const response = await fetch(
-      "/api/timetable?admin=conflicts",
+      `/api/timetable?admin=conflicts&weekOffset=${normalizedWeekOffset}`,
       {
         method: "GET",
         headers: {
