@@ -4567,7 +4567,7 @@ async function saveTimetableMemo(memoText, classItem, day, period, scheduleType)
     targets: {
       grades: [String(classItem.grade)],
       classes: [String(classItem.classNo)],
-      courses: ["all"],
+      courses: [normalizeCourseTheme(classItem.course)],
       timetable: {
         class_id: String(classItem.id),
         grade: String(classItem.grade),
