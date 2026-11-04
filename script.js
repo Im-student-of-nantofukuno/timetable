@@ -6508,63 +6508,6 @@ async function showSubjectSelectionDialog(
     });
 
     // ========================================
-    // メモ入力への切り替え
-    // ※この段階では入力確認のみ。保存処理は行わない。
-    // ========================================
-    const memoToggle = document.createElement("button");
-    memoToggle.type = "button";
-    memoToggle.className = "subject-selection-memo-toggle";
-    memoToggle.textContent = "メモを追加";
-    dialog.appendChild(memoToggle);
-
-    const memoPanel = document.createElement("section");
-    memoPanel.className = "subject-selection-memo-panel";
-    memoPanel.hidden = true;
-    memoPanel.style.cssText = "margin: 12px 0; padding: 12px; border: 1px solid #d5dbe3; border-radius: 10px;";
-
-    const memoLabel = document.createElement("label");
-    memoLabel.textContent = "この時間へのメモ";
-    memoLabel.style.cssText = "display:block; margin-bottom:6px; font-weight:600;";
-
-    const memoInput = document.createElement("textarea");
-    memoInput.className = "subject-selection-memo-input";
-    memoInput.placeholder = "例：小テストがあります。教材を持ってきてください。";
-    memoInput.maxLength = 500;
-    memoInput.rows = 4;
-    memoInput.style.cssText = "box-sizing:border-box; width:100%; min-height:96px; padding:10px; resize:vertical; font:inherit; border:1px solid #cbd5e1; border-radius:8px;";
-    memoLabel.appendChild(memoInput);
-    memoPanel.appendChild(memoLabel);
-
-    const memoHelp = document.createElement("p");
-    memoHelp.textContent = "500文字以内。現段階では入力内容の確認のみで、まだ保存されません。";
-    memoHelp.style.cssText = "margin:6px 0 10px; color:#64748b; font-size:12px;";
-    memoPanel.appendChild(memoHelp);
-
-    const memoSubmit = document.createElement("button");
-    memoSubmit.type = "button";
-    memoSubmit.className = "subject-selection-memo-submit";
-    memoSubmit.textContent = "このメモを追加";
-    memoPanel.appendChild(memoSubmit);
-    dialog.appendChild(memoPanel);
-
-    memoToggle.addEventListener("click", () => {
-      memoPanel.hidden = !memoPanel.hidden;
-      memoToggle.textContent = memoPanel.hidden ? "メモを追加" : "科目の選択に戻る";
-      if (!memoPanel.hidden) memoInput.focus();
-    });
-
-    memoSubmit.addEventListener("click", () => {
-      const memoText = memoInput.value.trim();
-      if (!memoText) {
-        memoInput.focus();
-        showToast("メモを入力してください。", 2500, "error");
-        return;
-      }
-      overlay.remove();
-      resolve({ type: "memo", text: memoText });
-    });
-
-    // ========================================
     // 検索欄
     // ========================================
     const search =
