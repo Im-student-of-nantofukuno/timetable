@@ -2654,8 +2654,49 @@ async function renderStudent() {
 
   // 各時限を表示
 
+　// 選択曜日の「今週の日付」を計算する。
+  // 管理画面で保存した target_date と照合するために使用する。
+  const selectedTargetDate = (() => {
+    const dayIndex = ["日", "月", "火", "水", "木", "金", "土"].indexOf(selectedDay);
+    if (dayIndex < 0) return "";
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    const daysSinceMonday = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - daysSinceMonday);
+    date.setDate(date.getDate() + (dayIndex === 0 ? -1 : dayIndex - 1));
+    const pad = value => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  })();
+
+  // SupabaseのtargetsはJSON文字列で返る場合があるため、両形式に対応する。
+  const timetableMemos = state.data.notifications.filter(notification => {
+    if (notification.kind !== "timetable_memo" || !isNotificationActive(notification)) {
+      return false;
+    }
+    let targets = notification.targets;
+    if (typeof targets === "string") {
+      try {
+        targets = JSON.parse(targets);
+      } catch (error) {
+        console.warn("時間割メモの対象情報を解析できません:", notification.id);
+        return false;
+      }
+    }
+    if (!targets || !matchesTargets(targets, state.profile)) return false;
+    const timetable = targets.timetable;
+    if (!timetable) return false;
+    if (timetable.day !== selectedDay) return false;
+    if (timetable.schedule_type === "change") {
+      return String(timetable.target_date || "") === selectedTargetDate;
+    }
+    return timetable.schedule_type === "base";
+  });
+
   $$(".period-subject").forEach(
     (subjectNode) => {
+    
+      // 再描画時に前回のメモ表示を残さない。
+      subjectNode.closest("li")?.querySelector(".period-memo")?.remove();
 
       const period =
         Number(subjectNode.dataset.period);
@@ -2722,6 +2763,37 @@ async function renderStudent() {
             timetableItem.subject_change
           )
         );
+
+      const matchingMemo = timetableMemos.find(notification => {
+        let targets = notification.targets;
+        if (typeof targets === "string") {
+          try {
+            targets = JSON.parse(targets);
+          } catch {
+            return false;
+          }
+        }
+        return Number(targets?.timetable?.period) === period;
+      });
+
+      if (matchingMemo) {
+        const memoNode = document.createElement("div");
+        memoNode.className = "period-memo";
+        memoNode.textContent = `メモ：${matchingMemo.body || ""}`;
+        memoNode.style.cssText = [
+          "margin-top:6px",
+          "padding:5px 7px",
+          "border-left:3px solid #d49a35",
+          "border-radius:4px",
+          "background:rgba(255, 246, 220, 0.9)",
+          "color:#5b451f",
+          "font-size:0.82rem",
+          "line-height:1.45",
+          "white-space:pre-wrap",
+          "overflow-wrap:anywhere"
+        ].join(";");
+        subjectNode.closest("li")?.append(memoNode);
+      }
     }
   );
 
