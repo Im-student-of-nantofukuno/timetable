@@ -2670,7 +2670,7 @@ async function renderStudent() {
 
   // SupabaseのtargetsはJSON文字列で返る場合があるため、両形式に対応する。
   const timetableMemos = state.data.notifications.filter(notification => {
-    if (notification.kind !== "timetable_memo" || !isNotificationActive(notification)) {
+    if (notification.kind !== "timetable_memo") {
       return false;
     }
     let targets = notification.targets;
@@ -2686,6 +2686,26 @@ async function renderStudent() {
     const timetable = targets.timetable;
     if (!timetable) return false;
     if (timetable.day !== selectedDay) return false;
+    
+    // メモの有効期間は「現在時刻」ではなく、選択中の曜日の日付で判定する。
+　  // 未来の週を表示した場合も、その日付に有効なメモを表示できる。
+    if (!selectedTargetDate) return false;
+    const targetDateStart = new Date(`${selectedTargetDate}T00:00:00+09:00`);
+    const targetDateEnd = new Date(`${selectedTargetDate}T23:59:59.999+09:00`);
+    const displayStart = new Date(notification.display_start);
+    const displayEnd = new Date(notification.display_end);
+
+    if (
+      Number.isNaN(targetDateStart.getTime()) ||
+      Number.isNaN(targetDateEnd.getTime()) ||
+      Number.isNaN(displayStart.getTime()) ||
+      Number.isNaN(displayEnd.getTime()) ||
+      displayStart > targetDateEnd ||
+      displayEnd < targetDateStart
+    ) {
+      return false;
+    }
+
     if (timetable.schedule_type === "change") {
       return String(timetable.target_date || "") === selectedTargetDate;
     }
