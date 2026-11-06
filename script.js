@@ -3027,6 +3027,17 @@ async function renderQuickAdmin() {
   const day =
     state.adminDay || "月";
 
+  // 浅い管理画面で選択中の週・曜日に対応する対象日。
+  // メモの保存時と同じ日付計算を使い、対象セルを特定する。
+  const quickAdminTargetDate = (() => {
+    const targetDate = getNextAdminWeekdayDate(day);
+    targetDate.setDate(
+      targetDate.getDate() + (Number(state.adminWeekOffset) || 0) * 7
+    );
+    const pad = value => String(value).padStart(2, "0");
+    return `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
+  })();
+
   // GASの曜日データ
   const dayData =
     gasData.timetable?.[day] || {};
@@ -3092,6 +3103,55 @@ async function renderQuickAdmin() {
             isConflict ? " is-conflict" : ""
           }`
         );
+     
+      // このセル・対象日に紐づくメモがある場合だけ、右上にinfo.jpgを表示。
+      const hasMemo = (state.data.notifications || []).some(notification => {
+        if (notification.kind !== "timetable_memo") return false;
+
+        let targets = notification.targets;
+        if (typeof targets === "string") {
+          try {
+            targets = JSON.parse(targets);
+          } catch (error) {
+            return false;
+          }
+        }
+
+        const memoTarget = targets?.timetable;
+        return Boolean(
+          memoTarget &&
+          String(memoTarget.class_id) === String(classItem.id) &&
+          String(memoTarget.grade) === String(classItem.grade) &&
+          String(memoTarget.class_no) === String(classItem.classNo) &&
+          String(memoTarget.day) === String(day) &&
+          Number(memoTarget.period) === Number(period) &&
+          memoTarget.schedule_type === "change" &&
+          String(memoTarget.target_date || "") === quickAdminTargetDate &&
+          Number(memoTarget.week_offset ?? 0) === (Number(state.adminWeekOffset) || 0)
+        );
+      });
+
+      if (hasMemo) {
+        cell.style.position = "relative";
+
+        const infoImage = document.createElement("img");
+        infoImage.src = "/info.jpg";
+        infoImage.alt = "";
+        infoImage.setAttribute("aria-hidden", "true");
+        infoImage.width = 16;
+        infoImage.height = 16;
+        infoImage.style.cssText = [
+          "position:absolute",
+          "top:3px",
+          "right:3px",
+          "width:16px",
+          "height:16px",
+          "object-fit:contain",
+          "pointer-events:none",
+          "z-index:1"
+        ].join(";");
+        cell.append(infoImage);
+      }
 
       const tooltipSubjectId =
         changeSubjectId ||
