@@ -4645,13 +4645,68 @@ async function requestNotificationApi(action, payload = {}) {
   }
 
 // 時間割セルに紐づくメモをSupabaseのnotificationsへ保存する。
+// 同じセル・同じ対象日の古いメモは、新しいメモの保存成功後に削除する。
 async function saveTimetableMemo(memoText, classItem, day, period, scheduleType) {
   const selectedDate = String(
     document.getElementById("admin-selected-date-value")?.dateTime || ""
   ).trim();
-  const targetDate = scheduleType === "change" && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
-    ? selectedDate
-    : getTokyoDateString();
+
+  const targetDate =
+    scheduleType === "change" && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
+      ? selectedDate
+      : getTokyoDateString();
+
+  // 既存メモのうち、今回の保存対象と一致するものを探す。
+  const oldMemoIds = (state.data.notifications || [])
+    .filter(existing => {
+      if (
+        existing.kind !== "timetable_memo" ||
+        !existing.id
+      ) {
+        return false;
+      }
+
+      let targets = existing.targets;
+
+      if (typeof targets === "string") {
+        try {
+          targets = JSON.parse(targets);
+        } catch {
+          return false;
+        }
+      }
+
+      const timetable = targets?.timetable;
+      if (!timetable) return false;
+
+      // 学年・クラス・曜日・時限・時間割の種類を確認
+      if (
+        String(timetable.class_id) !== String(classItem.id) ||
+        String(timetable.grade) !== String(classItem.grade) ||
+        String(timetable.class_no) !== String(classItem.classNo) ||
+        String(timetable.day) !== String(day) ||
+        Number(timetable.period) !== Number(period) ||
+        String(timetable.schedule_type) !== String(scheduleType)
+      ) {
+        return false;
+      }
+
+      // 対象日も一致するものだけを削除対象にする。
+      const existingTargetDate =
+        String(existing.display_start || "").slice(0, 10);
+
+      if (existingTargetDate !== targetDate) {
+        return false;
+      }
+
+      if (scheduleType === "change") {
+        return String(timetable.target_date || "") === targetDate;
+      }
+
+      return timetable.schedule_type === "base";
+    })
+    .map(existing => String(existing.id));
+
   const notification = {
     id: `timetable-memo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     kind: "timetable_memo",
@@ -4678,11 +4733,36 @@ async function saveTimetableMemo(memoText, classItem, day, period, scheduleType)
     }
   };
 
+  // 先に新しいメモを保存する。
   const result = await requestNotificationApi("insert", { notification });
-  if (result.data) {
-    state.data.notifications.unshift(result.data);
+  const savedNotification = result.data || notification;
+
+  state.data.notifications.unshift(savedNotification);
+
+  // 新しいメモの保存成功後に、古いメモを削除する。
+  const deletionErrors = [];
+
+  for (const oldId of oldMemoIds) {
+    try {
+      await requestNotificationApi("delete", { id: oldId });
+
+      state.data.notifications =
+        state.data.notifications.filter(
+          item => String(item.id) !== oldId
+        );
+    } catch (error) {
+      console.error("古い時間割メモの削除に失敗:", oldId, error);
+      deletionErrors.push(oldId);
+    }
   }
-  return result.data || notification;
+
+  if (deletionErrors.length > 0) {
+    throw new Error(
+      "新しいメモは保存されましたが、以前のメモの削除に失敗しました。管理画面を確認してください。"
+    );
+  }
+
+  return savedNotification;
 }
 
 async function handlePostSubmit(event) {
