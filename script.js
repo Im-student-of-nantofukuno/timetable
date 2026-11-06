@@ -4316,7 +4316,8 @@ async function editChange(classItem, period, existingChange) {
       allTimetables: stagedTimetables,
       grade: classItem.grade,
       classNo: classItem.classNo
-    }
+    },
+    { classItem, day, period, scheduleType: "change" }
   );
 
   if (subjectChange === null) return;
@@ -6587,7 +6588,8 @@ async function showSubjectSelectionDialog(
   subjects,
   currentValue,
   locationText,
-  conflictContext = null
+  conflictContext = null,
+  memoContext = null
 ) {
   return new Promise((resolve) => {
 
@@ -6656,6 +6658,57 @@ async function showSubjectSelectionDialog(
     memoInput.maxLength = 500;
     memoInput.rows = 4;
     memoInput.style.cssText = "box-sizing:border-box;width:100%;min-height:96px;padding:10px;resize:vertical;font:inherit;border:1px solid #cbd5e1;border-radius:8px;";
+    // このセル・対象週に紐づく既存メモを探し、入力欄に読み込む。
+    let existingMemo = null;
+    if (memoContext) {
+      const selectedDate = String(
+        document.getElementById("admin-selected-date-value")?.dateTime || ""
+      ).trim();
+      const targetDate =
+        memoContext.scheduleType === "change" && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
+          ? selectedDate
+          : getTokyoDateString();
+
+      const expectedTargets = {
+        grades: [String(memoContext.classItem.grade)],
+        classes: [String(memoContext.classItem.classNo)],
+        courses: [normalizeCourseTheme(memoContext.classItem.course)],
+        timetable: {
+          class_id: String(memoContext.classItem.id),
+          grade: String(memoContext.classItem.grade),
+          class_no: String(memoContext.classItem.classNo),
+          day: memoContext.day,
+          period: Number(memoContext.period),
+          target_date: memoContext.scheduleType === "change" ? targetDate : null,
+          schedule_type: memoContext.scheduleType,
+          week_offset: memoContext.scheduleType === "change"
+            ? Number(state.adminWeekOffset) || 0
+            : null
+        }
+      };
+      const expectedTargetsKey = stableStringify(expectedTargets);
+
+      existingMemo = (state.data.notifications || []).find(notification => {
+        if (notification.kind !== "timetable_memo") return false;
+
+        let targets = notification.targets;
+        if (typeof targets === "string") {
+          try {
+            targets = JSON.parse(targets);
+          } catch (error) {
+            return false;
+          }
+        }
+
+        return targets && stableStringify(targets) === expectedTargetsKey;
+      }) || null;
+    }
+
+    if (existingMemo) {
+      memoInput.value = String(existingMemo.body || "");
+      memoPanel.hidden = false;
+    }
+
     memoLabel.appendChild(memoInput);
     memoPanel.appendChild(memoLabel);
 
@@ -6667,13 +6720,17 @@ async function showSubjectSelectionDialog(
     const memoSubmit = document.createElement("button");
     memoSubmit.type = "button";
     memoSubmit.className = "subject-selection-memo-submit";
-    memoSubmit.textContent = "このメモを追加";
+    memoSubmit.textContent = existingMemo ? "このメモを更新" : "このメモを追加";
+    if (existingMemo) {
+      memoToggle.textContent = "科目の選択に戻る";
+      memoHelp.textContent = "既存のメモを編集できます。保存すると同じ対象の古いメモが置き換わります。";
+    }
     memoPanel.appendChild(memoSubmit);
     dialog.appendChild(memoPanel);
 
     memoToggle.addEventListener("click", () => {
       memoPanel.hidden = !memoPanel.hidden;
-      memoToggle.textContent = memoPanel.hidden ? "メモを追加" : "科目の選択に戻る";
+      memoToggle.textContent = memoPanel.hidden ? (existingMemo ? "メモを編集" : "メモを追加") : "科目の選択に戻る";
       if (!memoPanel.hidden) memoInput.focus();
     });
 
