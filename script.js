@@ -4400,19 +4400,43 @@ async function editChange(classItem, period, existingChange) {
 
   if (subjectChange === null) return;
 
-  if (subjectChange && typeof subjectChange === "object" && subjectChange.type === "memo") {
+  if (subjectChange && typeof subjectChange === "object" && subjectChange.type === "delete-memo") {
     try {
-      await saveTimetableMemo(subjectChange.text, classItem, day, period, "change");
-      showToast("メモをSupabaseに保存しました。");
+      await requestNotificationApi("delete", { id: subjectChange.id });
+      state.data.notifications = (state.data.notifications || []).filter(
+        notification => String(notification.id) !== String(subjectChange.id)
+      );
     } catch (error) {
-      console.error("時間割メモの保存に失敗しました:", error);
-      showToast(`メモを保存できませんでした。\n${error.message}`, 5000, "error");
+      console.error("時間割メモの削除に失敗しました:", error);
+      showToast(`メモを削除できませんでした。\n${error.message}`, 5000, "error");
+      return;
+    }
+    showToast("メモを削除しました。");
+    try {
+      // 最新の通知データをもとにセルのiマークを再判定する。
+      await renderQuickAdmin();
+    } catch (error) {
+      console.error("メモ削除後の画面更新に失敗しました:", error);
+      showToast("メモは削除されましたが、画面の更新に失敗しました。再読み込みしてください。", 5000, "error");
     }
     return;
   }
- 
+
   if (subjectChange && typeof subjectChange === "object" && subjectChange.type === "memo") {
-    showToast("メモを入力しました。現在はまだ保存されていません。", 4500);
+    try {
+      await saveTimetableMemo(subjectChange.text, classItem, day, period, "change");
+    } catch (error) {
+      console.error("時間割メモの保存に失敗しました:", error);
+      showToast(`メモを保存できませんでした。\n${error.message}`, 5000, "error");
+      return;
+    }
+    showToast("メモをSupabaseに保存しました。");
+    try {
+ 
+    } catch (error) {
+      console.error("メモ保存後の画面更新に失敗しました:", error);
+      showToast("メモは保存されましたが、画面の更新に失敗しました。再読み込みしてください。", 5000, "error");
+    }
     return;
   }
    
@@ -6804,6 +6828,25 @@ async function showSubjectSelectionDialog(
       memoHelp.textContent = "既存のメモを編集できます。保存すると同じ対象の古いメモが置き換わります。";
     }
     memoPanel.appendChild(memoSubmit);
+    
+    // 既存メモがある場合は、同じ欄から削除できるようにする。
+    if (existingMemo?.id) {
+      const memoDelete = document.createElement("button");
+      memoDelete.type = "button";
+      memoDelete.className = "subject-selection-memo-delete";
+      memoDelete.textContent = "このメモを削除";
+      memoDelete.style.cssText = "margin-left:8px;padding:8px 12px;border:1px solid #d66;border-radius:6px;background:#fff;color:#b42318;cursor:pointer;";
+      memoPanel.appendChild(memoDelete);
+
+      memoDelete.addEventListener("click", () => {
+        if (!window.confirm("この時間のメモを削除します。よろしいですか？")) {
+          return;
+        }
+        overlay.remove();
+        resolve({ type: "delete-memo", id: String(existingMemo.id) });
+      });
+    }
+
     dialog.appendChild(memoPanel);
 
     memoToggle.addEventListener("click", () => {
