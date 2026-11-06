@@ -3103,6 +3103,8 @@ async function renderQuickAdmin() {
             isConflict ? " is-conflict" : ""
           }`
         );
+        
+     /* メモにはinfoを付けないことにしたのでコメントアウト
      
       // このセル・対象日に紐づくメモがある場合だけ、右上にinfo.jpgを表示。
       const hasMemo = (state.data.notifications || []).some(notification => {
@@ -3152,7 +3154,7 @@ async function renderQuickAdmin() {
         ].join(";");
         cell.append(infoImage);
       }
-
+*/
       const tooltipSubjectId =
         changeSubjectId ||
         timetableItem?.subject_base ||
