@@ -2654,20 +2654,23 @@ async function renderStudent() {
 
   // 各時限を表示
 
-　// 選択曜日の「今週の日付」を計算する。
-  // 管理画面で保存した target_date と照合するために使用する。
+  // 選択曜日の「今日を含めて次に来る日付」を計算する。
   const selectedTargetDate = (() => {
-    const dayIndex = ["日", "月", "火", "水", "木", "金", "土"].indexOf(selectedDay);
-    if (dayIndex < 0) return "";
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const targetWeekday = weekdays.indexOf(selectedDay);
+  
+    if (targetWeekday < 0) return "";
+  
     const date = new Date();
     date.setHours(0, 0, 0, 0);
-    const daysSinceMonday = (date.getDay() + 6) % 7;
-    date.setDate(date.getDate() - daysSinceMonday);
-    date.setDate(date.getDate() + (dayIndex === 0 ? -1 : dayIndex - 1));
+  
+    const daysUntil = (targetWeekday - date.getDay() + 7) % 7;
+    date.setDate(date.getDate() + daysUntil);
+  
     const pad = value => String(value).padStart(2, "0");
+  
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   })();
-
   // SupabaseのtargetsはJSON文字列で返る場合があるため、両形式に対応する。
   const timetableMemos = state.data.notifications.filter(notification => {
     if (notification.kind !== "timetable_memo") {
