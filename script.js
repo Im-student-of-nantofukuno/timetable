@@ -2802,7 +2802,6 @@ async function renderStudent() {
       if (matchingMemo) {
         const memoNode = document.createElement("div");
         memoNode.className = "period-memo";
-        memoNode.textContent = `メモ：${matchingMemo.body || ""}`;
         memoNode.style.cssText = [
           "margin-top:6px",
           "padding:5px 7px",
@@ -2812,9 +2811,28 @@ async function renderStudent() {
           "color:#5b451f",
           "font-size:0.82rem",
           "line-height:1.45",
+          "display:flex",
+          "align-items:center",
+          "gap:8px"
+        ].join(";");
+          
+        const memoTextNode = document.createElement("span");
+        memoTextNode.textContent = `メモ：${matchingMemo.body || ""}`;
+        memoTextNode.style.cssText = [
+          "flex:1",
+          "min-width:0",
           "white-space:pre-wrap",
           "overflow-wrap:anywhere"
         ].join(";");
+
+        const infoImage = document.createElement("img");
+        infoImage.src = "/info.jpg";
+        infoImage.alt = "";
+        infoImage.width = 18;
+        infoImage.height = 18;
+        infoImage.style.cssText = "display:block;width:18px;height:18px;flex:0 0 18px;object-fit:contain;";
+
+        memoNode.append(memoTextNode, infoImage);
         subjectNode.closest("li")?.append(memoNode);
       }
     }
