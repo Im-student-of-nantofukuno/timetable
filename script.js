@@ -2652,6 +2652,52 @@ async function renderStudent() {
     }
   );
 
+  
+  // ========================================
+  // 調査用ログ：生徒画面が参照している科目データ
+  // ========================================
+  console.group("生徒画面：GAS科目データ確認");
+  console.log("プロフィール:", {
+    grade: state.profile.grade,
+    classNo: state.profile.classNo,
+    course: state.profile.course,
+    selectedDay
+  });
+  console.log("選択中コースの科目一覧（gasData.subjects）:");
+  console.table(
+    (gasData.subjects || []).map((subject) => ({
+      subject_id: String(subject.subject_id ?? ""),
+      subject_name: String(subject.subject_name ?? ""),
+      raw: subject
+    }))
+  );
+  console.log("選択曜日の時間割データ（timetable）:");
+  console.table(
+    todayTimetable.map((item) => ({
+      period: item.period,
+      subject_id: String(item.subject_id ?? ""),
+      subject_name: String(item.subject_name ?? ""),
+      joint: item.joint ?? null
+    }))
+  );
+  console.log("時間割IDと科目一覧の照合結果:");
+  console.table(
+    todayTimetable.map((item) => {
+      const id = String(item.subject_id ?? "").trim();
+      const matched = (gasData.subjects || []).find(
+        (subject) => String(subject.subject_id ?? "").trim() === id
+      );
+      return {
+        period: item.period,
+        timetable_subject_id: id,
+        matched_subject_id: String(matched?.subject_id ?? ""),
+        subject_name: String(matched?.subject_name ?? ""),
+        found: Boolean(matched)
+      };
+    })
+  );
+  console.groupEnd();
+
   // 各時限を表示
 
   // 選択曜日の「今日を含めて次に来る日付」を計算する。
