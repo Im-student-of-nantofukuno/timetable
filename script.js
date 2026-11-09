@@ -7031,7 +7031,7 @@ async function showSubjectSelectionDialog(
             ).trim();
 
           // 他のjoint科目の構成科目として使われているIDは、
-          // 時間割変更の候補一覧には表示しない。
+          // トップレベルには表示せず、親jointの下に表示する。
           if (jointMemberSubjectIds.has(subjectId)) {
             return false;
           }
@@ -7068,7 +7068,22 @@ async function showSubjectSelectionDialog(
               .includes(keyword) ||
             displayName
               .toLowerCase()
-              .includes(keyword)
+              .includes(keyword) ||
+            (Array.isArray(subject.subject_ids) &&
+              subject.subject_ids.some((memberId) => {
+                const member = subjects.find(
+                  (item) =>
+                    String(item.subject_id || "").trim() ===
+                    String(memberId || "").trim()
+                );
+                return Boolean(
+                  member &&
+                  (
+                    String(member.subject_id || "").toLowerCase().includes(keyword) ||
+                    String(member.subject_name || "").toLowerCase().includes(keyword)
+                  )
+                );
+              }))
           );
         });
 
@@ -7193,6 +7208,74 @@ async function showSubjectSelectionDialog(
         );
 
         list.appendChild(button);
+        
+        // jointの構成科目を、親jointの直下にインデントして表示する。
+        // 子科目を選択した場合は、その通常科目IDを返す。
+        if (Array.isArray(subject.subject_ids)) {
+          subject.subject_ids.forEach((memberId) => {
+            const memberSubject = subjects.find(
+              (item) =>
+                String(item.subject_id || "").trim() ===
+                String(memberId || "").trim()
+            );
+            if (!memberSubject) return;
+
+            const memberSubjectId =
+              String(memberSubject.subject_id || "").trim();
+            const memberSubjectName =
+              String(memberSubject.subject_name || "").trim();
+
+            const memberHLabel = getHLabelFromSubjectId(
+              memberSubjectId,
+              conflictContext?.allTimetables
+            );
+            const memberCourseLabel = getCourseLabelFromSubjectId(
+              memberSubjectId,
+              conflictContext?.allTimetables
+            );
+            let memberDisplayName = memberSubjectName;
+            if (memberHLabel) {
+              memberDisplayName =
+                `${memberSubjectName}_${memberHLabel}${memberCourseLabel ? `（${memberCourseLabel}）` : ""}`;
+            } else if (memberCourseLabel) {
+              memberDisplayName =
+                `${memberSubjectName}（${memberCourseLabel}）`;
+            }
+
+            const memberButton = document.createElement("button");
+            memberButton.type = "button";
+            memberButton.className =
+              "subject-selection-item subject-selection-joint-member";
+            memberButton.style.paddingLeft = "34px";
+            memberButton.style.backgroundColor = "#f8fafc";
+            memberButton.style.borderLeft = "3px solid #dbe5f1";
+
+            const memberConflict = conflictContext
+              ? checkSubjectSelectionConflict(
+                  memberSubject,
+                  conflictContext.classId,
+                  conflictContext.day,
+                  conflictContext.period,
+                  subjects,
+                  conflictContext.allTimetables
+                )
+              : false;
+
+            if (memberConflict) {
+              memberButton.classList.add("subject-selection-conflict");
+              memberButton.title =
+                "担当教員または場所が他のクラスと重複します";
+            }
+
+            memberButton.textContent =
+              `↳ ${memberSubjectId} : ${memberDisplayName}`;
+            memberButton.addEventListener("click", () => {
+              overlay.remove();
+              resolve(memberSubjectId);
+            });
+            list.appendChild(memberButton);
+          });
+        }
       });
     }
 
