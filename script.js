@@ -2878,8 +2878,8 @@ async function renderStudent() {
         infoImage.width = 18;
         infoImage.height = 18;
         infoImage.style.cssText = "display:block;width:18px;height:18px;flex:0 0 18px;object-fit:contain;";
-        */
-        memoNode.append(memoTextNode, infoImage);
+        memoNode.append(memoTextNode, infoImage);*/
+        memoNode.append(memoTextNode);
         subjectNode.closest("li")?.append(memoNode);
       }
     }
