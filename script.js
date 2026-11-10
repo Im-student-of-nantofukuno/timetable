@@ -2870,7 +2870,8 @@ async function renderStudent() {
           "white-space:pre-wrap",
           "overflow-wrap:anywhere"
         ].join(";");
-
+        
+        /*生徒用画面にはinfoを付けないことにしたのでコメントアウト
         const infoImage = document.createElement("img");
         infoImage.src = "/info.jpg";
         infoImage.alt = "";
@@ -2880,6 +2881,7 @@ async function renderStudent() {
 
         memoNode.append(memoTextNode, infoImage);
         subjectNode.closest("li")?.append(memoNode);
+        */
       }
     }
   );
@@ -3149,8 +3151,6 @@ async function renderQuickAdmin() {
             isConflict ? " is-conflict" : ""
           }`
         );
-        
-     /* メモにはinfoを付けないことにしたのでコメントアウト
      
       // このセル・対象日に紐づくメモがある場合だけ、右上にinfo.jpgを表示。
       const hasMemo = (state.data.notifications || []).some(notification => {
@@ -3200,7 +3200,6 @@ async function renderQuickAdmin() {
         ].join(";");
         cell.append(infoImage);
       }
-*/
       const tooltipSubjectId =
         changeSubjectId ||
         timetableItem?.subject_base ||
