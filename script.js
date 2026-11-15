@@ -572,12 +572,20 @@ function bindEvents() {
       "土"
     ];
 
-    const today = new Date();
-    const todayName = dayNames[today.getDay()];
+    // 16:00以降は翌日を初期選択する。
+    // 土日は時間割がないため、次の月曜日を選択する。
+    const targetDate = new Date();
+    targetDate.setHours(0, 0, 0, 0);
 
-    if (["月", "火", "水", "木", "金"].includes(todayName)) {
-      studentDaySelect.value = todayName;
+    if (new Date().getHours() >= 16) {
+      targetDate.setDate(targetDate.getDate() + 1);
     }
+
+    while ([0, 6].includes(targetDate.getDay())) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+
+    studentDaySelect.value = dayNames[targetDate.getDay()];
   }
 
   $("#student-day")?.addEventListener("change", () => {
